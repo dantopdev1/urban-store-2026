@@ -2,8 +2,8 @@
   "name": "my-first-site",
   "version": "1.0.0",
   "description": "",
-  "main": "server2.js"
- "scripts": {
+  "main": "server2.js",
+  "scripts": {
     "start": "node server2.js"
   },
   "keywords": [],
@@ -12,6 +12,7 @@
   "type": "commonjs",
   "engines": {
     "node": "22.x"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
@@ -20,4 +21,3 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0"
   }
-}
