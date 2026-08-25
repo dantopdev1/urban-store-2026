@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>URBAN — Clothing Store</title>
+
+
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     TOP BAR
+===================================================== -->
+
+<div class="top-bar">
+
+    <span>
+        Бесплатная доставка от 300 zł
+    </span>
+
+    <span>
+        URBAN STORE
+    </span>
+
+    <span>
+        Помощь · Контакты
+    </span>
+
+</div>
+
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<header class="header">
+
+
+    <div class="header-left">
+
+
+        <button
+            class="mobile-menu"
+            id="mobile-menu"
+        >
+            ☰
+        </button>
+
+
+        <a
+            href="#"
+            class="logo"
+        >
+            URBAN
+        </a>
+
+
+    </div>
+
+
+
+    <nav class="main-nav">
+
+        <a href="#catalog">
+            Каталог
+        </a>
+
+        <a href="#men">
+            Мужское
+        </a>
+
+        <a href="#women">
+            Женское
+        </a>
+
+        <a href="#new">
+            Новинки
+        </a>
+
+        <a href="#sale">
+            Sale
+        </a>
+
+    </nav>
+
+
+
+    <div class="header-actions">
+
+
+        <button
+            class="icon-button"
+            id="account-button"
+            type="button"
+            aria-label="Аккаунт"
+        >
+            ACCOUNT
+        </button>
+
+
+        <button
+            class="icon-button"
+            id="search-button"
+            type="button"
+            aria-label="Поиск"
+        >
+            🔍
+        </button>
+
+
+        <button
+            class="icon-button cart-button"
+            type="button"
+            aria-label="Корзина"
+        >
+            🛒
+
+            <span id="cart-count">
+                0
+            </span>
+
+        </button>
+
+
+    </div>
+
+
+</header>
+
+
+
+<!-- =====================================================
+     SEARCH
+===================================================== -->
+
+<div
+    class="search-panel"
+    id="search-panel"
+>
+
+
+    <input
+        type="text"
+        id="search-input"
+        placeholder="Поиск товаров..."
+    >
+
+
+    <button
+        id="close-search"
+        type="button"
+    >
+        ×
+    </button>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     HERO
+===================================================== -->
+
+<main>
+
+
+    <section class="hero">
+
+
+        <div class="hero-content">
+
+
+            <p class="hero-small">
+
+                URBAN / NEW COLLECTION
+
+            </p>
+
+
+            <h1>
+
+                NEW<br>
+                SEASON
+
+            </h1>
+
+
+            <p class="hero-description">
+
+                Минимализм. Свобода.
+                Городской стиль.
+
+            </p>
+
+
+            <a
+                href="#catalog"
+                class="hero-button"
+            >
+
+                СМОТРЕТЬ КОЛЛЕКЦИЮ
+
+            </a>
+
+
+        </div>
+
+
+    </section>
+
+
+
+<!-- =====================================================
+     INTRO
+===================================================== -->
+
+    <section class="collection-intro">
+
+
+        <p class="section-label">
+
+            URBAN COLLECTION
+
+        </p>
+
+
+        <h2>
+
+            Одежда для<br>
+            города
+
+        </h2>
+
+
+        <p>
+
+            Минималистичные вещи,
+            созданные для повседневного
+            движения.
+
+        </p>
+
+
+    </section>
+
+
+
+<!-- =====================================================
+     CATALOG
+===================================================== -->
+
+    <section
+        class="catalog-section"
+        id="catalog"
+    >
+
+
+        <div class="section-heading">
+
+
+            <div>
+
+
+                <p class="section-label">
+
+                    SHOP
+
+                </p>
+
+
+                <h2>
+
+                    Каталог
+
+                </h2>
+
+
+            </div>
+
+
+
+            <div class="category-buttons">
+
+
+                <button
+                    class="category-btn active"
+                    data-category="all"
+                    type="button"
+                >
+                    Все
+                </button>
+
+
+                <button
+                    class="category-btn"
+                    data-category="hoodies"
+                    type="button"
+                >
+                    Худи
+                </button>
+
+
+                <button
+                    class="category-btn"
+                    data-category="tshirts"
+                    type="button"
+                >
+                    Футболки
+                </button>
+
+
+                <button
+                    class="category-btn"
+                    data-category="pants"
+                    type="button"
+                >
+                    Брюки
+                </button>
+
+
+                <button
+                    class="category-btn"
+                    data-category="jackets"
+                    type="button"
+                >
+                    Куртки
+                </button>
+
+
+            </div>
+
+
+        </div>
+
+
+
+        <div
+            class="products-grid"
+            id="products-grid"
+        >
+        </div>
+
+
+    </section>
+
+
+
+<!-- =====================================================
+     FEATURE
+===================================================== -->
+
+    <section class="feature-banner">
+
+
+        <div class="feature-content">
+
+
+            <p>
+
+                URBAN ESSENTIALS
+
+            </p>
+
+
+            <h2>
+
+                LESS<br>
+                BUT BETTER
+
+            </h2>
+
+
+            <a href="#catalog">
+
+                ПОСМОТРЕТЬ
+
+            </a>
+
+
+        </div>
+
+
+    </section>
+
+
+
+<!-- =====================================================
+     POPULAR
+===================================================== -->
+
+    <section class="products-section">
+
+
+        <div class="section-heading">
+
+
+            <div>
+
+
+                <p class="section-label">
+
+                    SELECTED
+
+                </p>
+
+
+                <h2>
+
+                    Популярные товары
+
+                </h2>
+
+
+            </div>
+
+
+            <a href="#catalog">
+
+                Смотреть все →
+
+            </a>
+
+
+        </div>
+
+
+
+        <div
+            class="products-grid"
+            id="popular-products"
+        >
+        </div>
+
+
+    </section>
+
+
+
+<!-- =====================================================
+     LOOKBOOK
+===================================================== -->
+
+    <section class="lookbook">
+
+
+        <div class="lookbook-image"></div>
+
+
+        <div class="lookbook-content">
+
+
+            <p class="section-label">
+
+                URBAN LOOKBOOK
+
+            </p>
+
+
+            <h2>
+
+                EVERYDAY<br>
+                UNIFORM
+
+            </h2>
+
+
+            <p>
+
+                Собери свой городской образ
+                из вещей URBAN.
+
+            </p>
+
+
+            <a href="#catalog">
+
+                ОТКРЫТЬ КАТАЛОГ
+
+            </a>
+
+
+        </div>
+
+
+    </section>
+
+
+
+<!-- =====================================================
+     BESTSELLERS
+===================================================== -->
+
+    <section class="products-section">
+
+
+        <div class="section-heading">
+
+
+            <div>
+
+
+                <p class="section-label">
+
+                    TOP PICKS
+
+                </p>
+
+
+                <h2>
+
+                    Бестселлеры
+
+                </h2>
+
+
+            </div>
+
+
+        </div>
+
+
+
+        <div
+            class="products-grid"
+            id="bestsellers"
+        >
+        </div>
+
+
+    </section>
+
+
+
+<!-- =====================================================
+     NEWSLETTER
+===================================================== -->
+
+    <section class="newsletter">
+
+
+        <p class="section-label">
+
+            STAY UPDATED
+
+        </p>
+
+
+        <h2>
+
+            Будь в курсе новых коллекций
+
+        </h2>
+
+
+        <p>
+
+            Получай новости URBAN первым.
+
+        </p>
+
+
+        <form id="newsletter-form">
+
+
+            <input
+                type="email"
+                placeholder="Ваш email"
+                required
+            >
+
+
+            <button type="submit">
+
+                ПОДПИСАТЬСЯ
+
+            </button>
+
+
+        </form>
+
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =====================================================
+     CART
+===================================================== -->
+
+<aside
+    id="cart-modal"
+    class="cart-modal"
+>
+
+
+    <div class="cart-top">
+
+
+        <h2>
+
+            Корзина
+
+        </h2>
+
+
+        <button
+            id="close-cart"
+            type="button"
+        >
+            ×
+        </button>
+
+
+    </div>
+
+
+    <div id="cart-items"></div>
+
+
+    <div class="cart-bottom">
+
+
+        <div class="cart-total-row">
+
+
+            <span>
+
+                Итого
+
+            </span>
+
+
+            <strong>
+
+                <span id="cart-total">
+                    0.00
+                </span>
+
+                zł
+
+            </strong>
+
+
+        </div>
+
+
+        <button
+            class="checkout-button"
+            type="button"
+        >
+
+            ОФОРМИТЬ ЗАКАЗ
+
+        </button>
+
+
+        <button
+            id="clear-cart"
+            class="clear-cart"
+            type="button"
+        >
+
+            Очистить корзину
+
+        </button>
+
+
+    </div>
+
+
+</aside>
+
+
+
+<!-- =====================================================
+     CART OVERLAY
+===================================================== -->
+
+<div
+    class="cart-overlay"
+    id="cart-overlay"
+></div>
+
+
+
+<!-- =====================================================
+     QUICK VIEW
+===================================================== -->
+
+<div
+    class="quick-view-overlay"
+    id="quick-view-overlay"
+>
+
+
+    <div class="quick-view-modal">
+
+
+        <button
+            class="quick-view-close"
+            id="quick-view-close"
+            type="button"
+        >
+            ×
+        </button>
+
+
+        <div class="quick-view-image">
+
+
+            <img
+                id="quick-view-image"
+                src=""
+                alt=""
+            >
+
+
+        </div>
+
+
+        <div class="quick-view-info">
+
+
+            <p
+                class="quick-view-category"
+                id="quick-view-category"
+            >
+                URBAN
+            </p>
+
+
+            <h2 id="quick-view-name">
+
+                Название товара
+
+            </h2>
+
+
+            <p
+                class="quick-view-description"
+                id="quick-view-description"
+            >
+
+                Описание товара
+
+            </p>
+
+
+            <div class="quick-view-stock">
+
+
+                <span>
+                    В наличии:
+                </span>
+
+
+                <strong id="quick-view-stock">
+                    0
+                </strong>
+
+
+            </div>
+
+
+            <div class="quick-view-bottom">
+
+
+                <strong
+                    class="quick-view-price"
+                    id="quick-view-price"
+                >
+                    0.00 zł
+                </strong>
+
+
+                <button
+                    class="quick-view-add"
+                    id="quick-view-add"
+                    type="button"
+                >
+                    ДОБАВИТЬ В КОРЗИНУ
+                </button>
+
+
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     ACCOUNT PANEL
+===================================================== -->
+
+<div
+    class="account-overlay"
+    id="account-overlay"
+></div>
+
+
+<aside
+    class="account-panel"
+    id="account-panel"
+>
+
+
+    <div class="account-top">
+
+
+        <h2>
+            ACCOUNT
+        </h2>
+
+
+        <button
+            id="account-close"
+            type="button"
+        >
+            ×
+        </button>
+
+
+    </div>
+
+
+
+    <!-- LOGIN -->
+
+    <div
+        class="account-view active"
+        id="login-view"
+    >
+
+
+        <p class="account-label">
+            WELCOME BACK
+        </p>
+
+
+        <h3>
+            Войти
+        </h3>
+
+
+        <form id="login-form">
+
+
+            <input
+                type="email"
+                id="login-email"
+                placeholder="Email"
+                autocomplete="email"
+                required
+            >
+
+
+            <input
+                type="password"
+                id="login-password"
+                placeholder="Пароль"
+                autocomplete="current-password"
+                required
+            >
+
+
+            <button
+                type="submit"
+                class="account-submit"
+            >
+                ВОЙТИ
+            </button>
+
+
+        </form>
+
+
+        <p
+            class="account-message"
+            id="login-message"
+        ></p>
+
+
+        <button
+            class="account-link"
+            id="show-register"
+            type="button"
+        >
+            Создать аккаунт
+        </button>
+
+
+    </div>
+
+
+
+    <!-- REGISTER -->
+
+    <div
+        class="account-view"
+        id="register-view"
+    >
+
+
+        <p class="account-label">
+            NEW ACCOUNT
+        </p>
+
+
+        <h3>
+            Регистрация
+        </h3>
+
+
+        <form id="register-form">
+
+
+            <input
+                type="text"
+                id="register-name"
+                placeholder="Имя"
+                autocomplete="name"
+                required
+            >
+
+
+            <input
+                type="email"
+                id="register-email"
+                placeholder="Email"
+                autocomplete="email"
+                required
+            >
+
+
+            <input
+                type="password"
+                id="register-password"
+                placeholder="Пароль"
+                autocomplete="new-password"
+                required
+            >
+
+
+            <button
+                type="submit"
+                class="account-submit"
+            >
+                СОЗДАТЬ АККАУНТ
+            </button>
+
+
+        </form>
+
+
+        <p
+            class="account-message"
+            id="register-message"
+        ></p>
+
+
+        <button
+            class="account-link"
+            id="show-login"
+            type="button"
+        >
+            Уже есть аккаунт? Войти
+        </button>
+
+
+    </div>
+
+
+
+    <!-- USER ACCOUNT -->
+
+    <div
+        class="account-view"
+        id="user-view"
+    >
+
+
+        <p class="account-label">
+            MY ACCOUNT
+        </p>
+
+
+        <h3 id="user-name">
+            Пользователь
+        </h3>
+
+
+        <p
+            class="account-email"
+            id="user-email"
+        ></p>
+
+
+        <button
+            class="account-submit"
+            id="logout-button"
+            type="button"
+        >
+            ВЫЙТИ
+        </button>
+
+
+    </div>
+
+
+</aside>
+
+
+
+<!-- =====================================================
+     FOOTER
+===================================================== -->
+
+<footer>
+
+
+    <div class="footer-main">
+
+
+        <div class="footer-brand">
+
+
+            <div class="footer-logo">
+                URBAN
+            </div>
+
+
+            <p>
+                Independent urban clothing brand.
+            </p>
+
+
+        </div>
+
+
+
+        <div class="footer-column">
+
+
+            <h3>
+                Каталог
+            </h3>
+
+
+            <a href="#catalog">
+                Новинки
+            </a>
+
+
+            <a href="#catalog">
+                Худи
+            </a>
+
+
+            <a href="#catalog">
+                Футболки
+            </a>
+
+
+            <a href="#catalog">
+                Брюки
+            </a>
+
+
+            <a href="#catalog">
+                Куртки
+            </a>
+
+
+        </div>
+
+
+
+        <div class="footer-column">
+
+
+            <h3>
+                Помощь
+            </h3>
+
+
+            <a href="#">
+                Доставка
+            </a>
+
+
+            <a href="#">
+                Оплата
+            </a>
+
+
+            <a href="#">
+                Возврат
+            </a>
+
+
+            <a href="#">
+                Размеры
+            </a>
+
+
+        </div>
+
+
+
+        <div class="footer-column">
+
+
+            <h3>
+                Контакты
+            </h3>
+
+
+            <a href="#">
+                Instagram
+            </a>
+
+
+            <a href="#">
+                Telegram
+            </a>
+
+
+            <a href="#">
+                Email
+            </a>
+
+
+        </div>
+
+
+    </div>
+
+
+
+    <div class="footer-bottom">
+
+
+        <span>
+            © 2026 URBAN
+        </span>
+
+
+        <span>
+            All rights reserved.
+        </span>
+
+
+    </div>
+
+
+</footer>
+
+
+
+<script src="script.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const accountButton =
+        document.getElementById("account-button");
+
+    const accountPanel =
+        document.getElementById("account-panel");
+
+    const accountOverlay =
+        document.getElementById("account-overlay");
+
+    const accountClose =
+        document.getElementById("account-close");
+
+
+    if (!accountButton) {
+        console.error("ACCOUNT: кнопка не найдена");
+        return;
+    }
+
+    if (!accountPanel) {
+        console.error("ACCOUNT: панель не найдена");
+        return;
+    }
+
+
+    function openAccount() {
+
+        accountPanel.classList.add("open");
+
+        if (accountOverlay) {
+            accountOverlay.classList.add("open");
+        }
+
+    }
+
+
+    function closeAccount() {
+
+        accountPanel.classList.remove("open");
+
+        if (accountOverlay) {
+            accountOverlay.classList.remove("open");
+        }
+
+    }
+
+
+    accountButton.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+            openAccount();
+
+        }
+    );
+
+
+    if (accountClose) {
+
+        accountClose.addEventListener(
+            "click",
+            function () {
+
+                closeAccount();
+
+            }
+        );
+
+    }
+
+
+    if (accountOverlay) {
+
+        accountOverlay.addEventListener(
+            "click",
+            function () {
+
+                closeAccount();
+
+            }
+        );
+
+    }
+
+
+    document.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (event.key === "Escape") {
+                closeAccount();
+            }
+
+        }
+    );
+
+
+    console.log("ACCOUNT: обработчик подключен");
+
+});
+</script>
+
+</body>
+</html>
