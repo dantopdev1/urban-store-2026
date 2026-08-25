@@ -2476,8 +2476,7 @@ app.get(
                 );
 
            if (result.rows.length === 0) {
-            ) {
-
+          
                 return res.status(404).json({
 
                     success: false,
