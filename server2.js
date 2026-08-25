@@ -2475,8 +2475,7 @@ app.get(
                     ]
                 );
 
-            if 
-                result.rows.length === 0
+           if (result.rows.length === 0) {
             ) {
 
                 return res.status(404).json({
@@ -2629,7 +2628,7 @@ app.listen(PORT, '0.0.0.0', () => {
             `URBAN STORE: http://localhost:${PORT}`
         );
 
-        console.log(
+        console.log(Ф
             "PostgreSQL + Users + Cart"
         );
 
