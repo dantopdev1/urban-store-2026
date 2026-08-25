@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "server2.js"
-  "scripts": {
+ "scripts": {
     "start": "node server2.js"
   },
   "keywords": [],
