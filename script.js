@@ -257,7 +257,13 @@ function renderCart() {
                 <strong>
                     ${escapeHTML(item.name)}
                 </strong>
-
+<div style="
+    margin-top:5px;
+    color:#111;
+    font-size:11px;
+">
+    Размер: ${escapeHTML(item.size || "S")}
+</div>
                 <div style="
                     margin-top:6px;
                     color:#777;
@@ -316,34 +322,26 @@ function renderCart() {
    ADD TO CART
    ===================================================== */
 
-function addToCart(product) {
+function addToCart(product, selectedSize = null) {
+    const size = selectedSize || "S";
 
     const existing =
         cart.find(
             item =>
-                String(item.id) ===
-                String(product.id)
+                String(item.id) === String(product.id) &&
+                item.size === size
         );
 
     if (existing) {
-
         existing.quantity++;
-
     } else {
-
         cart.push({
-
             id: product.id,
-
             name: product.name,
-
-            price:
-                Number(product.price) || 0,
-
+            price: Number(product.price) || 0,
+            size: size,
             quantity: 1
-
         });
-
     }
 
     renderCart();
@@ -1426,10 +1424,18 @@ if (quickViewAdd) {
                 return;
             }
 
-            addToCart(
-                currentQuickViewProduct
-            );
+            const selectedSizeButton =
+    document.querySelector(
+        ".quick-view-size.active"
+    );
 
+const selectedSize =
+    selectedSizeButton?.dataset.size || "S";
+
+addToCart(
+    currentQuickViewProduct,
+    selectedSize
+);
             quickViewAdd.textContent =
                 "ДОБАВЛЕНО ✓";
 
