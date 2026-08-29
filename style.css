@@ -1812,4 +1812,876 @@ footer {
     color: #777;
 
     font-size: 13px;
+}/* =====================================================
+   URBAN PRODUCT CARDS — FIX
+===================================================== */
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 36px 18px;
+    width: 100%;
+}
+
+.product {
+    position: relative;
+    background: transparent;
+    min-width: 0;
+    overflow: visible;
+}
+
+.product-image-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: #f3f3f3;
+}
+
+.product-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center;
+    transition: transform .6s cubic-bezier(.2,.7,.2,1);
+}
+
+.product:hover .product-image {
+    transform: scale(1.035);
+}
+
+.product-no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #eeeeee;
+    color: #999;
+
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 7px;
+}
+
+/* QUICK VIEW */
+
+.quick-view-button {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+
+    padding: 14px;
+
+    border: none;
+    background: rgba(255,255,255,.96);
+    color: #111;
+
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+
+    opacity: 0;
+    transform: translateY(12px);
+
+    transition:
+        opacity .3s ease,
+        transform .3s ease;
+}
+
+.product:hover .quick-view-button {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* FAVORITE */
+
+.product-favorite {
+    position: absolute;
+
+    top: 12px;
+    right: 12px;
+
+    width: 38px;
+    height: 38px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: rgba(255,255,255,.94);
+
+    font-size: 20px;
+
+    z-index: 5;
+
+    transition:
+        background .25s ease,
+        color .25s ease;
+}
+
+.product-favorite:hover {
+    background: #111;
+    color: #fff;
+}
+
+/* BADGE */
+
+.product-badge {
+    position: absolute;
+
+    top: 14px;
+    left: 14px;
+
+    padding: 8px 11px;
+
+    background: #111;
+    color: #fff;
+
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+
+    z-index: 5;
+}
+
+/* INFO */
+
+.product-info {
+    padding-top: 15px;
+}
+
+.product-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.product-info h3 {
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.product-info p {
+    margin: 6px 0 0;
+
+    color: #888;
+
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* PRICE */
+
+.product-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin-top: 13px;
+}
+
+.product-price {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ADD BUTTON */
+
+.add-to-cart {
+    min-width: 105px;
+
+    padding: 10px 14px;
+
+    border: 1px solid #111;
+
+    background: #111;
+    color: #fff;
+
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .8px;
+
+    transition:
+        background .25s ease,
+        color .25s ease,
+        transform .25s ease;
+}
+
+.add-to-cart:hover:not(:disabled) {
+    background: #fff;
+    color: #111;
+    transform: translateY(-2px);
+}
+
+.add-to-cart:disabled {
+    background: #eee;
+    color: #999;
+    border-color: #eee;
+    cursor: not-allowed;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 1100px) {
+
+    .products-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 750px) {
+
+    .products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 30px 12px;
+    }
+
+    .product-bottom {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .add-to-cart {
+        width: 100%;
+    }
+
+}
+
+@media (max-width: 480px) {
+
+    .products-grid {
+        grid-template-columns: 1fr;
+    }
+
+}/* =========================
+   ИСПРАВЛЕНИЕ ФОТО ТОВАРОВ
+   ========================= */
+
+.product-image {
+    width: 100%;
+    height: 420px;
+    overflow: hidden;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Сетка товаров */
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+}
+
+/* Карточка */
+
+.product {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Планшет */
+
+@media (max-width: 900px) {
+    .products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .product-image {
+        height: 360px;
+    }
+}
+
+/* Телефон */
+
+@media (max-width: 480px) {
+    .products-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .product-image {
+        height: 420px;
+    }
+}/* =====================================================
+   URBAN — FINAL PRODUCT DESIGN
+   ===================================================== */
+
+.products-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 42px 18px !important;
+}
+
+.product {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    overflow: visible;
+}
+
+.product-image-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: #f3f3f3;
+    margin-bottom: 15px;
+}
+
+.product-image {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    object-fit: cover !important;
+    object-position: center;
+    transition:
+        transform .6s cubic-bezier(.2,.7,.2,1),
+        opacity .3s ease;
+}
+
+.product:hover .product-image {
+    transform: scale(1.035);
+}
+
+
+/* =====================================================
+   QUICK VIEW BUTTON
+   ===================================================== */
+
+.quick-view-button {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+
+    width: calc(100% - 28px);
+
+    padding: 15px;
+
+    border: none;
+
+    background: rgba(255,255,255,.96);
+    color: #111;
+
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+
+   opacity: 1;
+transform: translateY(0);
+
+    transition:
+        opacity .3s ease,
+        transform .3s ease,
+        background .2s ease,
+        color .2s ease;
+
+    z-index: 10;
+}
+
+.product:hover .quick-view-button {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.quick-view-button:hover {
+    background: #111;
+    color: #fff;
+}
+
+
+/* =====================================================
+   FAVORITE
+   ===================================================== */
+
+.product-favorite {
+    position: absolute;
+
+    top: 12px;
+    right: 12px;
+
+    width: 38px;
+    height: 38px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: rgba(255,255,255,.95);
+
+    font-size: 19px;
+
+    z-index: 10;
+
+    transition:
+        background .25s ease,
+        color .25s ease,
+        transform .25s ease;
+}
+
+.product-favorite:hover,
+.product-favorite.active {
+    background: #111;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+
+/* =====================================================
+   QUICK VIEW OVERLAY
+   ===================================================== */
+
+.quick-view-overlay {
+    position: fixed;
+    inset: 0;
+
+    z-index: 5000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 30px;
+
+    background: rgba(0,0,0,.58);
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition:
+        opacity .35s ease,
+        visibility .35s ease;
+}
+
+.quick-view-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+
+/* =====================================================
+   QUICK VIEW WINDOW
+   ===================================================== */
+
+.quick-view-modal {
+    position: relative;
+
+    width: min(1100px, 100%);
+    max-height: 90vh;
+
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+
+    background: #fff;
+
+    overflow: hidden;
+
+    transform: translateY(30px) scale(.97);
+
+    transition:
+        transform .4s cubic-bezier(.2,.7,.2,1);
+}
+
+.quick-view-overlay.open .quick-view-modal {
+    transform: translateY(0) scale(1);
+}
+
+
+/* =====================================================
+   QUICK VIEW IMAGE
+   ===================================================== */
+
+.quick-view-image {
+    position: relative;
+
+    min-height: 700px;
+
+    background: #f2f2f2;
+
+    overflow: hidden;
+}
+
+.quick-view-image > #quick-view-image {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+}
+
+
+/* =====================================================
+   THUMBNAILS
+   ===================================================== */
+
+.quick-view-thumbnails {
+    position: absolute;
+
+    left: 18px;
+    bottom: 18px;
+
+    display: flex;
+    gap: 8px;
+
+    max-width: calc(100% - 36px);
+
+    overflow-x: auto;
+
+    z-index: 20;
+}
+
+.quick-view-thumbnail {
+    flex: 0 0 64px;
+
+    width: 64px;
+    height: 80px;
+
+    padding: 0;
+
+    border: 2px solid transparent;
+
+    background: #fff;
+
+    cursor: pointer;
+
+    overflow: hidden;
+
+    opacity: .85;
+
+    transition:
+        border-color .2s ease,
+        opacity .2s ease,
+        transform .2s ease;
+}
+
+.quick-view-thumbnail:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+}
+
+.quick-view-thumbnail.active {
+    border-color: #111;
+    opacity: 1;
+}
+
+.quick-view-thumbnail img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    display: block;
+}
+
+
+/* =====================================================
+   CLOSE
+   ===================================================== */
+
+.quick-view-close {
+    position: absolute;
+
+    top: 15px;
+    right: 15px;
+
+    width: 42px;
+    height: 42px;
+
+    border: none;
+
+    background: rgba(255,255,255,.95);
+
+    font-size: 25px;
+
+    z-index: 50;
+
+    transition:
+        background .2s ease,
+        color .2s ease;
+}
+
+.quick-view-close:hover {
+    background: #111;
+    color: #fff;
+}
+
+
+/* =====================================================
+   QUICK VIEW INFO
+   ===================================================== */
+
+.quick-view-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 65px 55px;
+
+    background: #fff;
+}
+
+.quick-view-category {
+    margin-bottom: 18px;
+
+    color: #888;
+
+    font-size: 10px;
+    font-weight: 600;
+
+    letter-spacing: 2px;
+
+    text-transform: uppercase;
+}
+
+.quick-view-info h2 {
+    margin-bottom: 20px;
+
+    font-size: 42px;
+    line-height: .95;
+    font-weight: 500;
+
+    letter-spacing: -2px;
+}
+
+.quick-view-description {
+    max-width: 420px;
+
+    margin-bottom: 30px;
+
+    color: #777;
+
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.quick-view-stock {
+    display: flex;
+    gap: 7px;
+
+    margin-bottom: 30px;
+
+    color: #777;
+
+    font-size: 11px;
+}
+
+.quick-view-stock strong {
+    color: #111;
+}
+
+.quick-view-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.quick-view-price {
+    font-size: 25px;
+    font-weight: 600;
+}
+
+.quick-view-add {
+    width: 100%;
+
+    padding: 18px;
+
+    border: 1px solid #111;
+
+    background: #111;
+    color: #fff;
+
+    font-size: 10px;
+    font-weight: 600;
+
+    letter-spacing: 1px;
+
+    transition:
+        background .25s ease,
+        color .25s ease;
+}
+
+.quick-view-add:hover:not(:disabled) {
+    background: #fff;
+    color: #111;
+}
+
+.quick-view-add:disabled {
+    background: #ddd;
+    color: #888;
+    border-color: #ddd;
+}
+
+
+/* =====================================================
+   PRODUCT INFO
+   ===================================================== */
+
+.product-info {
+    padding-top: 5px;
+}
+
+.product-info h3 {
+    margin: 0 0 6px;
+
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.product-info p {
+    margin: 0;
+
+    color: #888;
+
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.product-bottom {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-top: 13px;
+}
+
+.product-price {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.add-to-cart {
+    min-width: 105px;
+
+    padding: 11px 15px;
+
+    border: 1px solid #111;
+
+    background: #111;
+    color: #fff;
+
+    font-size: 9px;
+    font-weight: 600;
+
+    letter-spacing: .8px;
+
+    transition:
+        background .2s ease,
+        color .2s ease,
+        transform .2s ease;
+}
+
+.add-to-cart:hover:not(:disabled) {
+    background: #fff;
+    color: #111;
+    transform: translateY(-2px);
+}
+
+
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 1100px) {
+
+    .products-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .quick-view-modal {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .quick-view-image {
+        min-height: 600px;
+    }
+}
+
+
+@media (max-width: 750px) {
+
+    .products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 30px 14px !important;
+    }
+
+    .quick-view-modal {
+        grid-template-columns: 1fr;
+
+        max-height: 94vh;
+
+        overflow-y: auto;
+    }
+
+    .quick-view-image {
+        min-height: 480px;
+    }
+
+    .quick-view-info {
+        padding: 35px 25px;
+    }
+
+    .quick-view-info h2 {
+        font-size: 32px;
+    }
+}
+
+
+@media (max-width: 480px) {
+
+    .products-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .product-image-wrapper {
+        aspect-ratio: 4 / 5;
+    }
+
+    .quick-view-overlay {
+        padding: 10px;
+    }
+
+    .quick-view-image {
+        min-height: 380px;
+    }
+
+    .quick-view-info {
+        padding: 30px 20px;
+    }
+
+    .quick-view-thumbnail {
+        flex-basis: 55px;
+        width: 55px;
+        height: 68px;
+    }
 }

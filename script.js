@@ -1,54 +1,230 @@
+/* =====================================================
+   URBAN STORE
+   PostgreSQL + Catalog + Filters + Cart + Quick View
+   ===================================================== */
+
+let cart = [];
+let databaseProducts = [];
+
+let currentQuickViewProduct = null;
+let currentQuickViewImages = [];
+let currentQuickViewImageIndex = 0;
+
+
+/* =====================================================
+   ELEMENTS
+   ===================================================== */
+
 const cartButton = document.querySelector(".cart-button");
 const cartModal = document.getElementById("cart-modal");
 const closeCart = document.getElementById("close-cart");
+const cartOverlay = document.getElementById("cart-overlay");
+
 const cartCount = document.getElementById("cart-count");
 const cartItems = document.getElementById("cart-items");
 const cartTotal = document.getElementById("cart-total");
 const clearCart = document.getElementById("clear-cart");
 
-let cart = [];
-let databaseProducts = [];
+const searchButton = document.getElementById("search-button");
+const searchPanel = document.getElementById("search-panel");
+const closeSearch = document.getElementById("close-search");
+const searchInput = document.getElementById("search-input");
+
+const newsletterForm =
+    document.getElementById("newsletter-form");
+
+const quickViewOverlay =
+    document.getElementById("quick-view-overlay");
+
+const quickViewClose =
+    document.getElementById("quick-view-close");
+
+const quickViewImage =
+    document.getElementById("quick-view-image");
+
+const quickViewCategory =
+    document.getElementById("quick-view-category");
+
+const quickViewName =
+    document.getElementById("quick-view-name");
+
+const quickViewDescription =
+    document.getElementById("quick-view-description");
+
+const quickViewStock =
+    document.getElementById("quick-view-stock");
+
+const quickViewPrice =
+    document.getElementById("quick-view-price");
+
+const quickViewAdd =
+    document.getElementById("quick-view-add");
 
 
 /* =====================================================
-   КОРЗИНА
-===================================================== */
+   HELPERS
+   ===================================================== */
 
-function renderCart() {
+function escapeHTML(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
-    const count =
-        cart.reduce(
-            (sum, item) =>
-                sum + item.quantity,
-            0
+
+/* =====================================================
+   PRODUCT IMAGES
+   ===================================================== */
+
+function getProductImages(product) {
+
+    let images = [];
+
+    if (Array.isArray(product.images)) {
+        images = product.images;
+    }
+
+    else if (typeof product.images === "string") {
+
+        try {
+
+            const parsed = JSON.parse(product.images);
+
+            if (Array.isArray(parsed)) {
+                images = parsed;
+            }
+
+        } catch {
+
+            images = product.images
+                .split(",")
+                .map(image => image.trim())
+                .filter(Boolean);
+        }
+    }
+
+    [
+        product.image,
+        product.image1,
+        product.image2,
+        product.image3,
+        product.image4,
+        product.image5
+    ].forEach(image => {
+
+        if (
+            typeof image === "string" &&
+            image.trim()
+        ) {
+            images.push(image.trim());
+        }
+
+    });
+
+    images = [
+        ...new Set(
+            images.filter(Boolean)
+        )
+    ];
+
+    if (images.length === 0) {
+
+        images.push(
+            "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1200&q=90"
         );
-
-
-    if (cartCount) {
-
-        cartCount.textContent =
-            count;
 
     }
 
+    return images;
+}
+
+
+/* =====================================================
+   REMOVE DUPLICATES
+   ===================================================== */
+
+function removeDuplicateProducts(products) {
+
+    const uniqueProducts = [];
+
+    const usedIds = new Set();
+    const usedKeys = new Set();
+
+    products.forEach(product => {
+
+        if (
+            product.id !== undefined &&
+            product.id !== null
+        ) {
+
+            const id = String(product.id);
+
+            if (usedIds.has(id)) {
+                return;
+            }
+
+            usedIds.add(id);
+        }
+
+        const images = getProductImages(product);
+
+        const name =
+            String(product.name || "")
+                .trim()
+                .toLowerCase();
+
+        const key =
+            `${name}|${images[0]}`;
+
+        if (usedKeys.has(key)) {
+            return;
+        }
+
+        usedKeys.add(key);
+
+        uniqueProducts.push(product);
+
+    });
+
+    return uniqueProducts;
+}
+
+
+/* =====================================================
+   CART
+   ===================================================== */
+
+function renderCart() {
+
+    if (cartCount) {
+
+        const count =
+            cart.reduce(
+                (sum, item) =>
+                    sum + item.quantity,
+                0
+            );
+
+        cartCount.textContent = count;
+    }
 
     if (!cartItems) {
         return;
     }
 
-
     cartItems.innerHTML = "";
 
-
-    if (!cart.length) {
+    if (cart.length === 0) {
 
         cartItems.innerHTML = `
-            <p
-                style="
-                    color:#777;
-                    padding:25px 0;
-                "
-            >
+            <p style="
+                color:#777;
+                padding:30px 0;
+                text-align:center;
+            ">
                 Корзина пуста.
             </p>
         `;
@@ -60,49 +236,51 @@ function renderCart() {
         return;
     }
 
-
     let total = 0;
 
+    cart.forEach((item, index) => {
 
-    cart.forEach((item) => {
-
-        const itemPrice =
+        const price =
             Number(item.price) || 0;
 
-
         total +=
-            itemPrice *
-            item.quantity;
-
+            price * item.quantity;
 
         const row =
             document.createElement("div");
 
-
-        row.className =
-            "cart-item";
-
+        row.className = "cart-item";
 
         row.innerHTML = `
-            <span>
-                ${item.name} × ${item.quantity}
-            </span>
+            <div>
 
-            <strong>
-                ${
-                    (
-                        itemPrice *
-                        item.quantity
-                    ).toFixed(2)
-                } zł
-            </strong>
+                <strong>
+                    ${escapeHTML(item.name)}
+                </strong>
+
+                <div style="
+                    margin-top:6px;
+                    color:#777;
+                    font-size:11px;
+                ">
+                    ${price.toFixed(2)} zł
+                    × ${item.quantity}
+                </div>
+
+            </div>
+
+            <button
+                class="remove-cart-item"
+                data-index="${index}"
+                type="button"
+            >
+                ×
+            </button>
         `;
-
 
         cartItems.appendChild(row);
 
     });
-
 
     if (cartTotal) {
 
@@ -111,26 +289,41 @@ function renderCart() {
 
     }
 
+    document
+        .querySelectorAll(".remove-cart-item")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    const index =
+                        Number(button.dataset.index);
+
+                    cart.splice(index, 1);
+
+                    renderCart();
+
+                }
+            );
+
+        });
+
 }
 
 
 /* =====================================================
-   ДОБАВЛЕНИЕ В КОРЗИНУ
-===================================================== */
+   ADD TO CART
+   ===================================================== */
 
 function addToCart(product) {
 
-    if (!product) {
-        return;
-    }
-
-
     const existing =
         cart.find(
-            (item) =>
-                item.id === product.id
+            item =>
+                String(item.id) ===
+                String(product.id)
         );
-
 
     if (existing) {
 
@@ -153,112 +346,560 @@ function addToCart(product) {
 
     }
 
-
     renderCart();
-
 }
 
 
 /* =====================================================
-   ТОВАРЫ ИЗ POSTGRESQL
+   QUICK VIEW GALLERY
+   ===================================================== */
+
+function createQuickViewGallery() {
+
+    const imageContainer =
+        document.querySelector(".quick-view-image");
+
+    if (!imageContainer) {
+        return;
+    }
+
+    let thumbnails =
+        imageContainer.querySelector(
+            ".quick-view-thumbnails"
+        );
+
+    if (!thumbnails) {
+
+        thumbnails =
+            document.createElement("div");
+
+        thumbnails.className =
+            "quick-view-thumbnails";
+
+        imageContainer.appendChild(
+            thumbnails
+        );
+    }
+
+    thumbnails.innerHTML = "";
+
+    currentQuickViewImages.forEach(
+        (image, index) => {
+
+            const thumbnail =
+                document.createElement("button");
+
+            thumbnail.type = "button";
+
+            thumbnail.className =
+                "quick-view-thumbnail";
+
+            if (
+                index ===
+                currentQuickViewImageIndex
+            ) {
+
+                thumbnail.classList.add("active");
+
+            }
+
+            thumbnail.innerHTML = `
+                <img
+                    src="${escapeHTML(image)}"
+                    alt=""
+                >
+            `;
+
+            thumbnail.addEventListener(
+                "click",
+                () => {
+
+                    showQuickViewImage(index);
+
+                }
+            );
+
+            thumbnails.appendChild(
+                thumbnail
+            );
+
+        }
+    );
+}
+
+
+/* =====================================================
+   SHOW QUICK VIEW IMAGE
+   ===================================================== */
+
+function showQuickViewImage(index) {
+
+    if (
+        !currentQuickViewImages.length ||
+        !quickViewImage
+    ) {
+        return;
+    }
+
+    if (
+        index < 0 ||
+        index >= currentQuickViewImages.length
+    ) {
+        return;
+    }
+
+    currentQuickViewImageIndex =
+        index;
+
+    quickViewImage.src =
+        currentQuickViewImages[index];
+
+    document
+        .querySelectorAll(".quick-view-thumbnail")
+        .forEach(
+            (thumbnail, thumbnailIndex) => {
+
+                thumbnail.classList.toggle(
+                    "active",
+                    thumbnailIndex === index
+                );
+
+            }
+        );
+}
+
+
+/* =====================================================
+   OPEN QUICK VIEW
+   ===================================================== */
+
+function openQuickView(product) {
+
+    if (!quickViewOverlay) {
+        return;
+    }
+
+    currentQuickViewProduct =
+        product;
+
+    currentQuickViewImages =
+        getProductImages(product);
+
+    currentQuickViewImageIndex = 0;
+
+    if (quickViewName) {
+
+        quickViewName.textContent =
+            product.name || "URBAN";
+
+    }
+
+    if (quickViewDescription) {
+
+        quickViewDescription.textContent =
+            product.description ||
+            "Качественная одежда для повседневного городского стиля.";
+
+    }
+
+    if (quickViewCategory) {
+
+        quickViewCategory.textContent =
+            product.category ||
+            "URBAN";
+
+    }
+
+    if (quickViewPrice) {
+
+        const price =
+            Number(product.price) || 0;
+
+        quickViewPrice.textContent =
+            `${price.toFixed(2)} zł`;
+
+    }
+
+    const stock =
+        Number(product.stock) || 0;
+
+    if (quickViewStock) {
+        quickViewStock.textContent = stock;
+        /* =====================================================
+   SIZE SELECTOR
 ===================================================== */
 
-async function loadProducts() {
+const sizes = Array.isArray(product.sizes)
+    ? product.sizes
+    : ["S", "M", "L", "XL"];
 
-    try {
+let quickViewSizes = document.querySelector(
+    ".quick-view-sizes"
+);
 
-        const response =
-            await fetch(
-                "/products"
-            );
+if (!quickViewSizes) {
+    quickViewSizes = document.createElement("div");
+    quickViewSizes.className = "quick-view-sizes";
 
+    const quickViewBottom =
+        document.querySelector(".quick-view-bottom");
 
-        if (!response.ok) {
+    if (quickViewBottom) {
+        quickViewBottom.insertBefore(
+            quickViewSizes,
+            quickViewBottom.firstChild
+        );
+    }
+}
 
-            throw new Error(
-                `Ошибка сервера: ${response.status}`
-            );
+quickViewSizes.innerHTML = `
+    <div class="quick-view-size-title">
+        РАЗМЕР
+    </div>
+
+    <div class="quick-view-size-list">
+        ${sizes.map((size, index) => `
+            <button
+                type="button"
+                class="quick-view-size ${index === 0 ? "active" : ""}"
+                data-size="${escapeHTML(size)}"
+            >
+                ${escapeHTML(size)}
+            </button>
+        `).join("")}
+    </div>
+`;
+
+quickViewSizes
+    .querySelectorAll(".quick-view-size")
+    .forEach(button => {
+        button.addEventListener("click", () => {
+            quickViewSizes
+                .querySelectorAll(".quick-view-size")
+                .forEach(item => {
+                    item.classList.remove("active");
+                });
+
+            button.classList.add("active");
+        });
+    });
+    }
+
+    if (quickViewImage) {
+
+        quickViewImage.src =
+            currentQuickViewImages[0];
+
+        quickViewImage.alt =
+            product.name || "URBAN";
+
+        quickViewImage.onerror =
+            function () {
+
+                this.onerror = null;
+
+                this.src =
+                    "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1200&q=90";
+
+            };
+    }
+
+    createQuickViewGallery();
+
+    if (quickViewAdd) {
+
+        if (stock <= 0) {
+
+            quickViewAdd.disabled = true;
+
+            quickViewAdd.textContent =
+                "НЕТ В НАЛИЧИИ";
+
+        } else {
+
+            quickViewAdd.disabled = false;
+
+            quickViewAdd.textContent =
+                "ДОБАВИТЬ В КОРЗИНУ";
 
         }
+    }
+
+    quickViewOverlay.classList.add("open");
+
+    document.body.classList.add("no-scroll");
+}
 
 
-        const products =
-            await response.json();
+/* =====================================================
+   CLOSE QUICK VIEW
+   ===================================================== */
+
+function closeQuickView() {
+
+    if (!quickViewOverlay) {
+        return;
+    }
+
+    quickViewOverlay.classList.remove("open");
+
+    document.body.classList.remove("no-scroll");
+
+    currentQuickViewProduct = null;
+}
 
 
-        console.log(
-            "Товары из PostgreSQL:",
-            products
-        );
+/* =====================================================
+   CREATE PRODUCT CARD
+   ===================================================== */
 
+function createProductCard(product, index) {
 
-        if (!Array.isArray(products)) {
+    const card =
+        document.createElement("article");
 
-            throw new Error(
-                "Сервер вернул неправильный формат товаров"
-            );
+    card.className = "product";
 
-        }
+    card.dataset.category =
+        product.category || "all";
 
+    card.style.animationDelay =
+        `${index * 0.04}s`;
 
-        databaseProducts =
-            products;
+    const images =
+        getProductImages(product);
 
+    const price =
+        Number(product.price) || 0;
 
-        renderProducts(
-            products
-        );
+    const stock =
+        Number(product.stock) || 0;
 
+    const outOfStock =
+        stock <= 0;
 
-    } catch (error) {
+    card.innerHTML = `
 
-        console.error(
-            "Ошибка загрузки товаров:",
-            error
+        <div class="product-image-wrapper">
+
+            <img
+                src="${escapeHTML(images[0])}"
+                alt="${escapeHTML(
+                    product.name || "URBAN"
+                )}"
+                class="product-image"
+            >
+
+            <button
+                class="product-favorite"
+                type="button"
+                aria-label="Добавить в избранное"
+            >
+                ♡
+            </button>
+
+            ${
+                product.badge
+                    ? `
+                        <span class="product-badge">
+                            ${escapeHTML(product.badge)}
+                        </span>
+                    `
+                    : ""
+            }
+
+            <button
+                class="quick-view-button"
+                type="button"
+            >
+                БЫСТРЫЙ ПРОСМОТР
+            </button>
+
+        </div>
+
+        <div class="product-info">
+
+            <div class="product-title-row">
+
+                <h3>
+                    ${escapeHTML(
+                        product.name || "URBAN"
+                    )}
+                </h3>
+
+            </div>
+
+            <p>
+                ${escapeHTML(
+                    product.description || ""
+                )}
+            </p>
+
+            <div class="product-bottom">
+
+                <span class="product-price">
+                    ${price.toFixed(2)} zł
+                </span>
+
+                ${
+                    outOfStock
+                        ? `
+                            <button
+                                class="add-to-cart"
+                                disabled
+                                type="button"
+                            >
+                                НЕТ В НАЛИЧИИ
+                            </button>
+                        `
+                        : `
+                            <button
+                                class="add-to-cart"
+                                type="button"
+                            >
+                                ДОБАВИТЬ
+                            </button>
+                        `
+                }
+
+            </div>
+
+        </div>
+    `;
+
+    const image =
+        card.querySelector(".product-image");
+
+    if (image) {
+
+        image.addEventListener(
+            "error",
+            function () {
+
+                this.onerror = null;
+
+                this.src =
+                    "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1200&q=90";
+
+            }
         );
 
     }
 
+    const quickButton =
+        card.querySelector(".quick-view-button");
+
+    if (quickButton) {
+
+        quickButton.addEventListener(
+            "click",
+            event => {
+
+                event.stopPropagation();
+
+                openQuickView(product);
+
+            }
+        );
+
+    }
+
+    const button =
+        card.querySelector(".add-to-cart");
+
+    if (
+        button &&
+        !outOfStock
+    ) {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.stopPropagation();
+
+                addToCart(product);
+
+                const oldText =
+                    button.textContent;
+
+                button.textContent =
+                    "ДОБАВЛЕНО ✓";
+
+                setTimeout(
+                    () => {
+
+                        button.textContent =
+                            oldText;
+
+                    },
+                    900
+                );
+
+            }
+        );
+
+    }
+
+    const favorite =
+        card.querySelector(".product-favorite");
+
+    if (favorite) {
+
+        favorite.addEventListener(
+            "click",
+            event => {
+
+                event.stopPropagation();
+
+                favorite.classList.toggle("active");
+
+                favorite.textContent =
+                    favorite.classList.contains("active")
+                        ? "♥"
+                        : "♡";
+
+            }
+        );
+
+    }
+
+    return card;
 }
 
 
 /* =====================================================
-   ОТОБРАЖЕНИЕ ТОВАРОВ
-===================================================== */
+   RENDER PRODUCTS
+   ===================================================== */
 
 function renderProducts(products) {
 
     const container =
-        document.querySelector("#products-grid") ||
-        document.querySelector(".products-grid");
-
+        document.querySelector("#products-grid");
 
     if (!container) {
 
         console.error(
-            "Не найден #products-grid"
+            "#products-grid не найден"
         );
 
         return;
     }
 
-
     container.innerHTML = "";
 
+    const uniqueProducts =
+        removeDuplicateProducts(products);
 
-    if (
-        !products ||
-        !products.length
-    ) {
+    if (uniqueProducts.length === 0) {
 
         container.innerHTML = `
-            <div
-                style="
-                    grid-column:1/-1;
-                    padding:80px 20px;
-                    text-align:center;
-                "
-            >
+
+            <div style="
+                grid-column:1/-1;
+                padding:100px 20px;
+                text-align:center;
+            ">
 
                 <h3>
                     Товаров пока нет
@@ -270,273 +911,402 @@ function renderProducts(products) {
         return;
     }
 
-
-    products.forEach(
+    uniqueProducts.forEach(
         (product, index) => {
 
             const card =
-                document.createElement(
-                    "div"
+                createProductCard(
+                    product,
+                    index
                 );
 
-
-            card.className =
-                "product";
-
-
-            card.dataset.category =
-                product.category ||
-                "all";
-
-
-            const image =
-                product.image
-                    ? product.image
-                    : "images/placeholder.jpg";
-
-
-            const price =
-                Number(product.price) || 0;
-
-
-            const stock =
-                Number(product.stock) || 0;
-
-
-            const outOfStock =
-                stock <= 0;
-
-
-            card.innerHTML = `
-
-                <div class="product-image-wrapper">
-
-                    <img
-                        src="${image}"
-                        alt="${product.name || "URBAN product"}"
-                        class="product-image"
-                    >
-
-                </div>
-
-
-                <div class="product-info">
-
-                    <h3>
-                        ${product.name || "Без названия"}
-                    </h3>
-
-
-                    <p>
-                        ${product.description || ""}
-                    </p>
-
-
-                    <div class="product-bottom">
-
-                        <span
-                            class="product-price"
-                        >
-                            ${price.toFixed(2)} zł
-                        </span>
-
-
-                        ${
-                            outOfStock
-
-                                ?
-
-                                `
-                                    <button
-                                        class="add-to-cart"
-                                        disabled
-                                    >
-                                        Нет в наличии
-                                    </button>
-                                `
-
-                                :
-
-                                `
-                                    <button
-                                        class="add-to-cart"
-                                        type="button"
-                                    >
-                                        Добавить
-                                    </button>
-                                `
-                        }
-
-                    </div>
-
-                </div>
-
-            `;
-
-
-            const productImage =
-                card.querySelector(
-                    ".product-image"
-                );
-
-
-            if (productImage) {
-
-                productImage.addEventListener(
-                    "error",
-                    function () {
-
-                        productImage.src =
-                            "images/placeholder.jpg";
-
-                    }
-                );
-
-            }
-
-
-            const button =
-                card.querySelector(
-                    ".add-to-cart"
-                );
-
-
-            if (
-                button &&
-                !outOfStock
-            ) {
-
-                button.addEventListener(
-                    "click",
-                    function () {
-
-                        addToCart(
-                            product
-                        );
-
-
-                        const oldText =
-                            button.textContent;
-
-
-                        button.textContent =
-                            "Добавлено ✓";
-
-
-                        setTimeout(
-                            function () {
-
-                                button.textContent =
-                                    oldText;
-
-                            },
-                            700
-                        );
-
-                    }
-                );
-
-            }
-
-
-            card.style.animationDelay =
-                `${index * 0.05}s`;
-
-
-            container.appendChild(
-                card
-            );
+            container.appendChild(card);
 
         }
     );
 
+    console.log(
+        "Отображено товаров:",
+        uniqueProducts.length
+    );
 }
 
 
 /* =====================================================
-   ФИЛЬТРЫ
-===================================================== */
+   LOAD PRODUCTS
+   ===================================================== */
+
+async function loadProducts() {
+
+    console.log(
+        "Загрузка товаров из PostgreSQL..."
+    );
+
+    try {
+
+        const response =
+            await fetch("/products");
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Ошибка сервера: ${response.status}`
+            );
+
+        }
+
+        const products =
+            await response.json();
+
+        if (!Array.isArray(products)) {
+
+            throw new Error(
+                "Сервер вернул неправильный формат товаров"
+            );
+
+        }
+
+        databaseProducts =
+            removeDuplicateProducts(products);
+
+        console.log(
+            "Получено товаров:",
+            products.length
+        );
+
+        console.log(
+            "После удаления дублей:",
+            databaseProducts.length
+        );
+
+        renderProducts(
+            databaseProducts
+        );
+
+    } catch (error) {
+
+        console.error(
+            "ОШИБКА ЗАГРУЗКИ ТОВАРОВ:",
+            error
+        );
+
+        const container =
+            document.querySelector(
+                "#products-grid"
+            );
+
+        if (container) {
+
+            container.innerHTML = `
+
+                <div style="
+                    grid-column:1/-1;
+                    padding:100px 20px;
+                    text-align:center;
+                ">
+
+                    <h3>
+                        Не удалось загрузить товары
+                    </h3>
+
+                    <p style="
+                        margin-top:15px;
+                        color:#777;
+                    ">
+                        Проверь, запущен ли сервер.
+                    </p>
+
+                </div>
+            `;
+
+        }
+    }
+}
+
+
+/* =====================================================
+   ⭐ NEW FILTER SYSTEM
+   ===================================================== */
 
 function setupFilters() {
 
-    const categoryButtons =
+    const buttons =
         document.querySelectorAll(
             ".category-btn"
         );
 
+    console.log(
+        "Найдено кнопок:",
+        buttons.length
+    );
 
-    categoryButtons.forEach(
-        (button) => {
+    buttons.forEach(button => {
 
-            button.addEventListener(
-                "click",
-                () => {
+        button.addEventListener(
+            "click",
+            () => {
 
-                    const category =
-                        button.dataset.category;
+                /* -------------------------------------
+                   Определяем кнопку
+                   ------------------------------------- */
+
+                const text =
+                    button.textContent
+                        .trim()
+                        .toLowerCase();
+
+                const dataCategory =
+                    String(
+                        button.dataset.category || ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+                console.log(
+                    "Нажата кнопка:",
+                    text,
+                    dataCategory
+                );
 
 
-                    categoryButtons.forEach(
-                        (item) => {
+                /* -------------------------------------
+                   ACTIVE
+                   ------------------------------------- */
 
-                            item.classList.remove(
-                                "active"
+                buttons.forEach(item => {
+
+                    item.classList.remove(
+                        "active"
+                    );
+
+                });
+
+                button.classList.add("active");
+
+
+                /* -------------------------------------
+                   КАТАЛОГ / ВСЕ
+                   ------------------------------------- */
+
+                if (
+                    text === "каталог" ||
+                    text === "все" ||
+                    dataCategory === "all"
+                ) {
+
+                    renderProducts(
+                        databaseProducts
+                    );
+
+                    return;
+                }
+
+
+                /* -------------------------------------
+                   МУЖСКОЕ
+                   PostgreSQL: gender = male
+                   ------------------------------------- */
+
+                if (
+                    text === "мужское" ||
+                    text === "мужчины" ||
+                    dataCategory === "male" ||
+                    dataCategory === "men" ||
+                    dataCategory === "мужское"
+                ) {
+
+                    const filtered =
+                        databaseProducts.filter(
+                            product => {
+
+                                const gender =
+                                    String(
+                                        product.gender || ""
+                                    )
+                                    .trim()
+                                    .toLowerCase();
+
+                                return (
+                                    gender === "male" ||
+                                    gender === "мужское" ||
+                                    gender === "men"
+                                );
+
+                            }
+                        );
+
+                    console.log(
+                        "Мужские товары:",
+                        filtered.length
+                    );
+
+                    renderProducts(filtered);
+
+                    return;
+                }
+
+
+                /* -------------------------------------
+                   ЖЕНСКОЕ
+                   PostgreSQL: gender = female
+                   ------------------------------------- */
+
+                if (
+                    text === "женское" ||
+                    text === "женщины" ||
+                    dataCategory === "female" ||
+                    dataCategory === "women" ||
+                    dataCategory === "женское"
+                ) {
+
+                    const filtered =
+                        databaseProducts.filter(
+                            product => {
+
+                                const gender =
+                                    String(
+                                        product.gender || ""
+                                    )
+                                    .trim()
+                                    .toLowerCase();
+
+                                return (
+                                    gender === "female" ||
+                                    gender === "женское" ||
+                                    gender === "women"
+                                );
+
+                            }
+                        );
+
+                    console.log(
+                        "Женские товары:",
+                        filtered.length
+                    );
+
+                    renderProducts(filtered);
+
+                    return;
+                }
+
+
+                /* -------------------------------------
+                   НОВИНКИ
+                   PostgreSQL: is_new = true
+                   ------------------------------------- */
+
+                if (
+                    text === "новинки" ||
+                    text === "новинки"
+                ) {
+
+                    const filtered =
+                        databaseProducts.filter(
+                            product =>
+                                product.is_new === true ||
+                                product.is_new === "true" ||
+                                product.is_new === 1
+                        );
+
+                    console.log(
+                        "Новинки:",
+                        filtered.length
+                    );
+
+                    renderProducts(filtered);
+
+                    return;
+                }
+
+
+                /* -------------------------------------
+                   SALE
+                   PostgreSQL: is_sale = true
+                   ------------------------------------- */
+
+                if (
+                    text === "sale" ||
+                    text === "скидки" ||
+                    text === "распродажа"
+                ) {
+
+                    const filtered =
+                        databaseProducts.filter(
+                            product =>
+                                product.is_sale === true ||
+                                product.is_sale === "true" ||
+                                product.is_sale === 1
+                        );
+
+                    console.log(
+                        "SALE:",
+                        filtered.length
+                    );
+
+                    renderProducts(filtered);
+
+                    return;
+                }
+
+
+                /* -------------------------------------
+                   ОБЫЧНЫЕ КАТЕГОРИИ
+                   hoodies / tshirts / pants / jackets
+                   ------------------------------------- */
+
+                const filtered =
+                    databaseProducts.filter(
+                        product => {
+
+                            const category =
+                                String(
+                                    product.category || ""
+                                )
+                                .trim()
+                                .toLowerCase();
+
+                            return (
+                                category === dataCategory ||
+                                category === text
                             );
 
                         }
                     );
 
+                console.log(
+                    "Категория:",
+                    dataCategory,
+                    "Товаров:",
+                    filtered.length
+                );
 
-                    button.classList.add(
-                        "active"
-                    );
+                renderProducts(filtered);
 
+            }
+        );
 
-                    const filteredProducts =
-                        category === "all"
-
-                            ?
-
-                            databaseProducts
-
-                            :
-
-                            databaseProducts.filter(
-                                (product) =>
-                                    product.category ===
-                                    category
-                            );
-
-
-                    renderProducts(
-                        filteredProducts
-                    );
-
-                }
-            );
-
-        }
-    );
+    });
 
 }
 
 
 /* =====================================================
-   КОРЗИНА — ОТКРЫТИЕ
-===================================================== */
+   CART OPEN
+   ===================================================== */
 
-if (
-    cartButton &&
-    cartModal
-) {
+if (cartButton) {
 
     cartButton.addEventListener(
         "click",
         () => {
 
-            cartModal.classList.add(
-                "open"
-            );
+            if (cartModal) {
+                cartModal.classList.add("open");
+            }
+
+            if (cartOverlay) {
+                cartOverlay.classList.add("open");
+            }
 
         }
     );
@@ -545,31 +1315,43 @@ if (
 
 
 /* =====================================================
-   КОРЗИНА — ЗАКРЫТИЕ
-===================================================== */
+   CART CLOSE
+   ===================================================== */
 
-if (
-    closeCart &&
-    cartModal
-) {
+function closeCartModal() {
+
+    if (cartModal) {
+        cartModal.classList.remove("open");
+    }
+
+    if (cartOverlay) {
+        cartOverlay.classList.remove("open");
+    }
+
+}
+
+if (closeCart) {
 
     closeCart.addEventListener(
         "click",
-        () => {
+        closeCartModal
+    );
 
-            cartModal.classList.remove(
-                "open"
-            );
+}
 
-        }
+if (cartOverlay) {
+
+    cartOverlay.addEventListener(
+        "click",
+        closeCartModal
     );
 
 }
 
 
 /* =====================================================
-   КОРЗИНА — ОЧИСТКА
-===================================================== */
+   CLEAR CART
+   ===================================================== */
 
 if (clearCart) {
 
@@ -580,6 +1362,200 @@ if (clearCart) {
             cart = [];
 
             renderCart();
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   QUICK VIEW CLOSE
+   ===================================================== */
+
+if (quickViewClose) {
+
+    quickViewClose.addEventListener(
+        "click",
+        closeQuickView
+    );
+
+}
+
+if (quickViewOverlay) {
+
+    quickViewOverlay.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target ===
+                quickViewOverlay
+            ) {
+
+                closeQuickView();
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   QUICK VIEW ADD TO CART
+   ===================================================== */
+
+if (quickViewAdd) {
+
+    quickViewAdd.addEventListener(
+        "click",
+        () => {
+
+            if (!currentQuickViewProduct) {
+                return;
+            }
+
+            const stock =
+                Number(
+                    currentQuickViewProduct.stock
+                ) || 0;
+
+            if (stock <= 0) {
+                return;
+            }
+
+            addToCart(
+                currentQuickViewProduct
+            );
+
+            quickViewAdd.textContent =
+                "ДОБАВЛЕНО ✓";
+
+            setTimeout(
+                () => {
+
+                    if (quickViewAdd) {
+
+                        quickViewAdd.textContent =
+                            "ДОБАВИТЬ В КОРЗИНУ";
+
+                    }
+
+                },
+                1000
+            );
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   SEARCH OPEN
+   ===================================================== */
+
+if (searchButton) {
+
+    searchButton.addEventListener(
+        "click",
+        () => {
+
+            if (searchPanel) {
+
+                searchPanel.classList.toggle("open");
+
+                if (
+                    searchPanel.classList.contains("open")
+                ) {
+
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+
+                }
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   SEARCH CLOSE
+   ===================================================== */
+
+if (closeSearch) {
+
+    closeSearch.addEventListener(
+        "click",
+        () => {
+
+            if (searchPanel) {
+
+                searchPanel.classList.remove("open");
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   SEARCH PRODUCTS
+   ===================================================== */
+
+if (searchInput) {
+
+    searchInput.addEventListener(
+        "input",
+        () => {
+
+            const query =
+                searchInput.value
+                    .toLowerCase()
+                    .trim();
+
+            if (!query) {
+
+                renderProducts(
+                    databaseProducts
+                );
+
+                return;
+            }
+
+            const filtered =
+                databaseProducts.filter(
+                    product => {
+
+                        const name =
+                            String(
+                                product.name || ""
+                            )
+                            .toLowerCase();
+
+                        const description =
+                            String(
+                                product.description || ""
+                            )
+                            .toLowerCase();
+
+                        return (
+                            name.includes(query) ||
+                            description.includes(query)
+                        );
+
+                    }
+                );
+
+            renderProducts(filtered);
 
         }
     );
@@ -589,776 +1565,40 @@ if (clearCart) {
 
 /* =====================================================
    NEWSLETTER
-===================================================== */
-
-const newsletterForm =
-    document.getElementById(
-        "newsletter-form"
-    );
-
+   ===================================================== */
 
 if (newsletterForm) {
 
     newsletterForm.addEventListener(
         "submit",
-        (event) => {
+        event => {
 
             event.preventDefault();
-
 
             const button =
-                event.target.querySelector(
-                    "button"
-                );
+                newsletterForm.querySelector("button");
 
-
-            if (button) {
-
-                const oldText =
-                    button.textContent;
-
-
-                button.textContent =
-                    "Готово ✓";
-
-
-                setTimeout(
-                    () => {
-
-                        button.textContent =
-                            oldText;
-
-                    },
-                    1500
-                );
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   ACCOUNT
-===================================================== */
-
-const accountButton =
-    document.getElementById(
-        "account-button"
-    );
-
-
-const accountPanel =
-    document.getElementById(
-        "account-panel"
-    );
-
-
-const accountOverlay =
-    document.getElementById(
-        "account-overlay"
-    );
-
-
-const accountClose =
-    document.getElementById(
-        "account-close"
-    );
-
-
-const loginView =
-    document.getElementById(
-        "login-view"
-    );
-
-
-const registerView =
-    document.getElementById(
-        "register-view"
-    );
-
-
-const userView =
-    document.getElementById(
-        "user-view"
-    );
-
-
-const showRegister =
-    document.getElementById(
-        "show-register"
-    );
-
-
-const showLogin =
-    document.getElementById(
-        "show-login"
-    );
-
-
-const loginForm =
-    document.getElementById(
-        "login-form"
-    );
-
-
-const registerForm =
-    document.getElementById(
-        "register-form"
-    );
-
-
-const logoutButton =
-    document.getElementById(
-        "logout-button"
-    );
-
-
-const loginMessage =
-    document.getElementById(
-        "login-message"
-    );
-
-
-const registerMessage =
-    document.getElementById(
-        "register-message"
-    );
-
-
-const userName =
-    document.getElementById(
-        "user-name"
-    );
-
-
-const userEmail =
-    document.getElementById(
-        "user-email"
-    );
-
-
-/* =====================================================
-   ACCOUNT — OPEN
-===================================================== */
-
-function openAccount() {
-
-    if (accountPanel) {
-
-        accountPanel.classList.add(
-            "open"
-        );
-
-    }
-
-
-    if (accountOverlay) {
-
-        accountOverlay.classList.add(
-            "open"
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   ACCOUNT — CLOSE
-===================================================== */
-
-function closeAccount() {
-
-    if (accountPanel) {
-
-        accountPanel.classList.remove(
-            "open"
-        );
-
-    }
-
-
-    if (accountOverlay) {
-
-        accountOverlay.classList.remove(
-            "open"
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   SHOW LOGIN
-===================================================== */
-
-function showLoginView() {
-
-    if (loginView) {
-
-        loginView.classList.add(
-            "active"
-        );
-
-    }
-
-
-    if (registerView) {
-
-        registerView.classList.remove(
-            "active"
-        );
-
-    }
-
-
-    if (userView) {
-
-        userView.classList.remove(
-            "active"
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   SHOW REGISTER
-===================================================== */
-
-function showRegisterView() {
-
-    if (loginView) {
-
-        loginView.classList.remove(
-            "active"
-        );
-
-    }
-
-
-    if (registerView) {
-
-        registerView.classList.add(
-            "active"
-        );
-
-    }
-
-
-    if (userView) {
-
-        userView.classList.remove(
-            "active"
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   SHOW USER
-===================================================== */
-
-function showUserView(user) {
-
-    if (loginView) {
-
-        loginView.classList.remove(
-            "active"
-        );
-
-    }
-
-
-    if (registerView) {
-
-        registerView.classList.remove(
-            "active"
-        );
-
-    }
-
-
-    if (userView) {
-
-        userView.classList.add(
-            "active"
-        );
-
-    }
-
-
-    if (userName) {
-
-        userName.textContent =
-            user.name ||
-            "Пользователь";
-
-    }
-
-
-    if (userEmail) {
-
-        userEmail.textContent =
-            user.email ||
-            "";
-
-    }
-
-
-    if (accountButton) {
-
-        accountButton.textContent =
-            user.name ||
-            "ACCOUNT";
-
-    }
-
-}
-
-
-/* =====================================================
-   ACCOUNT BUTTON
-===================================================== */
-
-if (accountButton) {
-
-    accountButton.addEventListener(
-        "click",
-        async () => {
-
-            openAccount();
-
-
-            try {
-
-                const response =
-                    await fetch(
-                        "/api/me"
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                if (
-                    data.loggedIn &&
-                    data.user
-                ) {
-
-                    showUserView(
-                        data.user
-                    );
-
-                } else {
-
-                    showLoginView();
-
-                }
-
-
-            } catch (error) {
-
-                console.error(
-                    "ACCOUNT ERROR:",
-                    error
-                );
-
-
-                showLoginView();
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   ACCOUNT CLOSE
-===================================================== */
-
-if (accountClose) {
-
-    accountClose.addEventListener(
-        "click",
-        closeAccount
-    );
-
-}
-
-
-if (accountOverlay) {
-
-    accountOverlay.addEventListener(
-        "click",
-        closeAccount
-    );
-
-}
-
-
-/* =====================================================
-   CREATE ACCOUNT
-===================================================== */
-
-if (showRegister) {
-
-    showRegister.addEventListener(
-        "click",
-        (event) => {
-
-            event.preventDefault();
-
-            event.stopPropagation();
-
-            showRegisterView();
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   BACK TO LOGIN
-===================================================== */
-
-if (showLogin) {
-
-    showLogin.addEventListener(
-        "click",
-        (event) => {
-
-            event.preventDefault();
-
-            event.stopPropagation();
-
-            showLoginView();
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   LOGIN
-===================================================== */
-
-if (loginForm) {
-
-    loginForm.addEventListener(
-        "submit",
-        async (event) => {
-
-            event.preventDefault();
-
-
-            const emailInput =
-                document.getElementById(
-                    "login-email"
-                );
-
-
-            const passwordInput =
-                document.getElementById(
-                    "login-password"
-                );
-
-
-            if (
-                !emailInput ||
-                !passwordInput
-            ) {
-
+            if (!button) {
                 return;
-
             }
 
+            const oldText =
+                button.textContent;
 
-            const email =
-                emailInput.value
-                    .trim();
+            button.textContent =
+                "ГОТОВО ✓";
 
+            setTimeout(
+                () => {
 
-            const password =
-                passwordInput.value;
+                    button.textContent =
+                        oldText;
 
+                    newsletterForm.reset();
 
-            if (loginMessage) {
-
-                loginMessage.textContent =
-                    "Выполняется вход...";
-
-            }
-
-
-            try {
-
-                const response =
-                    await fetch(
-                        "/api/login",
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            body:
-                                JSON.stringify({
-                                    email,
-                                    password
-                                })
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.message ||
-                        "Ошибка входа"
-                    );
-
-                }
-
-
-                loginForm.reset();
-
-
-                if (loginMessage) {
-
-                    loginMessage.textContent =
-                        "";
-
-                }
-
-
-                showUserView(
-                    data.user
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "LOGIN ERROR:",
-                    error
-                );
-
-
-                if (loginMessage) {
-
-                    loginMessage.textContent =
-                        error.message;
-
-                }
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   REGISTRATION
-===================================================== */
-
-if (registerForm) {
-
-    registerForm.addEventListener(
-        "submit",
-        async (event) => {
-
-            event.preventDefault();
-
-
-            const nameInput =
-                document.getElementById(
-                    "register-name"
-                );
-
-
-            const emailInput =
-                document.getElementById(
-                    "register-email"
-                );
-
-
-            const passwordInput =
-                document.getElementById(
-                    "register-password"
-                );
-
-
-            if (
-                !nameInput ||
-                !emailInput ||
-                !passwordInput
-            ) {
-
-                return;
-
-            }
-
-
-            const name =
-                nameInput.value
-                    .trim();
-
-
-            const email =
-                emailInput.value
-                    .trim();
-
-
-            const password =
-                passwordInput.value;
-
-
-            if (registerMessage) {
-
-                registerMessage.textContent =
-                    "Создание аккаунта...";
-
-            }
-
-
-            try {
-
-                const response =
-                    await fetch(
-                        "/api/register",
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            body:
-                                JSON.stringify({
-                                    name,
-                                    email,
-                                    password
-                                })
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.message ||
-                        "Ошибка регистрации"
-                    );
-
-                }
-
-
-                registerForm.reset();
-
-
-                if (registerMessage) {
-
-                    registerMessage.textContent =
-                        "";
-
-                }
-
-
-                showUserView(
-                    data.user
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "REGISTER ERROR:",
-                    error
-                );
-
-
-                if (registerMessage) {
-
-                    registerMessage.textContent =
-                        error.message;
-
-                }
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   LOGOUT
-===================================================== */
-
-if (logoutButton) {
-
-    logoutButton.addEventListener(
-        "click",
-        async () => {
-
-            try {
-
-                await fetch(
-                    "/api/logout",
-                    {
-                        method: "POST"
-                    }
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "LOGOUT ERROR:",
-                    error
-                );
-
-            }
-
-
-            if (accountButton) {
-
-                accountButton.textContent =
-                    "ACCOUNT";
-
-            }
-
-
-            showLoginView();
-
-            closeAccount();
+                },
+                1500
+            );
 
         }
     );
@@ -1368,17 +1608,23 @@ if (logoutButton) {
 
 /* =====================================================
    ESCAPE
-===================================================== */
+   ===================================================== */
 
 document.addEventListener(
     "keydown",
-    (event) => {
+    event => {
 
-        if (
-            event.key === "Escape"
-        ) {
+        if (event.key === "Escape") {
 
-            closeAccount();
+            closeQuickView();
+
+            closeCartModal();
+
+            if (searchPanel) {
+
+                searchPanel.classList.remove("open");
+
+            }
 
         }
 
@@ -1387,459 +1633,22 @@ document.addEventListener(
 
 
 /* =====================================================
-   ЗАПУСК
-===================================================== */
+   START
+   ===================================================== */
 
-loadProducts();
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-setupFilters();
-
-renderCart();
-/* =====================================================
-   URBAN — DATABASE CART SYNC
-===================================================== */
-
-let urbanCurrentUser = null;
-
-
-/* =====================================================
-   CHECK CURRENT USER
-===================================================== */
-
-async function urbanCheckUser() {
-
-    try {
-
-        const response =
-            await fetch("/api/me");
-
-        const data =
-            await response.json();
-
-        if (
-            data.loggedIn &&
-            data.user
-        ) {
-
-            urbanCurrentUser =
-                data.user;
-
-            await urbanLoadCart();
-
-            return true;
-
-        }
-
-        urbanCurrentUser =
-            null;
-
-        return false;
-
-    } catch (error) {
-
-        console.error(
-            "Ошибка проверки аккаунта:",
-            error
-        );
-
-        urbanCurrentUser =
-            null;
-
-        return false;
-
-    }
-
-}
-
-
-/* =====================================================
-   LOAD CART FROM POSTGRESQL
-===================================================== */
-
-async function urbanLoadCart() {
-
-    if (!urbanCurrentUser) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch("/api/cart");
-
-
-        if (
-            response.status === 401
-        ) {
-
-            urbanCurrentUser =
-                null;
-
-            return;
-
-        }
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.message ||
-                "Ошибка загрузки корзины"
-            );
-
-        }
-
-
-        cart =
-            (data.cart || []).map(
-                item => ({
-
-                    id:
-                        item.product_id,
-
-                    product_id:
-                        item.product_id,
-
-                    name:
-                        item.name,
-
-                    description:
-                        item.description,
-
-                    price:
-                        Number(item.price) || 0,
-
-                    image:
-                        item.image,
-
-                    stock:
-                        Number(item.stock) || 0,
-
-                    category:
-                        item.category,
-
-                    quantity:
-                        Number(item.quantity) || 1
-
-                })
-            );
-
+        setupFilters();
 
         renderCart();
 
+        loadProducts();
 
-    } catch (error) {
-
-        console.error(
-            "Ошибка загрузки корзины:",
-            error
+        console.log(
+            "URBAN STORE запущен ✓"
         );
 
     }
-
-}
-
-
-/* =====================================================
-   SAVE PRODUCT TO POSTGRESQL
-===================================================== */
-
-async function urbanSaveCartProduct(
-    product
-) {
-
-    if (!urbanCurrentUser) {
-
-        openAccount();
-
-        showLoginView();
-
-        return false;
-
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/cart",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-
-                            productId:
-                                product.id,
-
-                            quantity:
-                                1
-
-                        })
-
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            response.status === 401
-        ) {
-
-            urbanCurrentUser =
-                null;
-
-            openAccount();
-
-            showLoginView();
-
-            return false;
-
-        }
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.message ||
-                "Не удалось сохранить товар"
-            );
-
-        }
-
-
-        await urbanLoadCart();
-
-        return true;
-
-
-    } catch (error) {
-
-        console.error(
-            "Ошибка сохранения корзины:",
-            error
-        );
-
-
-        alert(
-            error.message
-        );
-
-
-        return false;
-
-    }
-
-}
-
-
-/* =====================================================
-   WRAP EXISTING ADD TO CART
-===================================================== */
-
-if (
-    typeof addToCart === "function"
-) {
-
-    const urbanOriginalAddToCart =
-        addToCart;
-
-
-    addToCart =
-        async function(product) {
-
-            if (!urbanCurrentUser) {
-
-                openAccount();
-
-                showLoginView();
-
-                return;
-
-            }
-
-
-            try {
-
-                const saved =
-                    await urbanSaveCartProduct(
-                        product
-                    );
-
-
-                if (!saved) {
-                    return;
-                }
-
-
-                /*
-                    Корзина уже обновлена
-                    с сервера через urbanLoadCart().
-                */
-
-            } catch (error) {
-
-                console.error(
-                    error
-                );
-
-                /*
-                    На случай ошибки
-                    оставляем старое поведение.
-                */
-
-                urbanOriginalAddToCart(
-                    product
-                );
-
-            }
-
-        };
-
-}
-
-
-/* =====================================================
-   CLEAR CART FROM DATABASE
-===================================================== */
-
-if (clearCart) {
-
-    clearCart.addEventListener(
-        "click",
-        async function () {
-
-            if (!urbanCurrentUser) {
-                return;
-            }
-
-
-            try {
-
-                const response =
-                    await fetch(
-                        "/api/cart",
-                        {
-                            method: "DELETE"
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.message ||
-                        "Ошибка очистки корзины"
-                    );
-
-                }
-
-
-                cart = [];
-
-
-                renderCart();
-
-
-            } catch (error) {
-
-                console.error(
-                    "Ошибка очистки корзины:",
-                    error
-                );
-
-            }
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   WRAP USER LOGIN / REGISTER
-===================================================== */
-
-if (
-    typeof showUserView === "function"
-) {
-
-    const urbanOriginalShowUserView =
-        showUserView;
-
-
-    showUserView =
-        function(user) {
-
-            urbanCurrentUser =
-                user;
-
-
-            urbanOriginalShowUserView(
-                user
-            );
-
-
-            setTimeout(
-                () => {
-
-                    urbanLoadCart();
-
-                },
-                0
-            );
-
-        };
-
-}
-
-
-/* =====================================================
-   WRAP LOGOUT
-===================================================== */
-
-if (logoutButton) {
-
-    logoutButton.addEventListener(
-        "click",
-        function () {
-
-            urbanCurrentUser =
-                null;
-
-            cart = [];
-
-            renderCart();
-
-        }
-    );
-
-}
-
-
-/* =====================================================
-   LOAD ACCOUNT + CART
-===================================================== */
-
-urbanCheckUser();
+);
