@@ -91,7 +91,8 @@ function getProductImages(product) {
 
         try {
 
-            const parsed = JSON.parse(product.images);
+            const parsed =
+                JSON.parse(product.images);
 
             if (Array.isArray(parsed)) {
                 images = parsed;
@@ -169,7 +170,8 @@ function removeDuplicateProducts(products) {
             usedIds.add(id);
         }
 
-        const images = getProductImages(product);
+        const images =
+            getProductImages(product);
 
         const name =
             String(product.name || "")
@@ -257,13 +259,18 @@ function renderCart() {
                 <strong>
                     ${escapeHTML(item.name)}
                 </strong>
-<div style="
-    margin-top:5px;
-    color:#111;
-    font-size:11px;
-">
-    Размер: ${escapeHTML(item.size || "S")}
-</div>
+
+                <div style="
+                    margin-top:5px;
+                    color:#111;
+                    font-size:11px;
+                ">
+                    Размер:
+                    ${escapeHTML(
+                        item.size || "S"
+                    )}
+                </div>
+
                 <div style="
                     margin-top:6px;
                     color:#777;
@@ -304,11 +311,35 @@ function renderCart() {
                 () => {
 
                     const index =
-                        Number(button.dataset.index);
+                        Number(
+                            button.dataset.index
+                        );
+
+                    const removed =
+                        cart[index];
 
                     cart.splice(index, 1);
 
                     renderCart();
+
+                    if (removed?.id) {
+
+                        fetch(
+                            `/api/cart/${removed.id}`,
+                            {
+                                method: "DELETE",
+                                credentials: "include"
+                            }
+                        ).catch(error => {
+
+                            console.warn(
+                                "Ошибка удаления с сервера:",
+                                error
+                            );
+
+                        });
+
+                    }
 
                 }
             );
@@ -319,32 +350,203 @@ function renderCart() {
 
 
 /* =====================================================
+   LOAD CART
+   ===================================================== */
+
+async function loadCart() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/cart",
+                {
+                    credentials:
+                        "include"
+                }
+            );
+
+        if (
+            response.status === 401
+        ) {
+
+            return;
+        }
+
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            !data.success
+        ) {
+
+            console.warn(
+                "Не удалось загрузить корзину:",
+                data.message
+            );
+
+            return;
+        }
+
+        const serverCart =
+            Array.isArray(data.cart)
+                ? data.cart
+                : [];
+
+        cart =
+            serverCart.map(item => ({
+                id:
+                    item.product_id ??
+                    item.id,
+
+                name:
+                    item.name ||
+                    "URBAN",
+
+                price:
+                    Number(
+                        item.price
+                    ) || 0,
+
+                size:
+                    item.size ||
+                    "S",
+
+                quantity:
+                    Number(
+                        item.quantity
+                    ) || 1
+            }));
+
+        renderCart();
+
+        console.log(
+            "CART: загружена с сервера",
+            cart
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "LOAD CART ERROR:",
+            error
+        );
+    }
+}
+
+
+/* =====================================================
    ADD TO CART
    ===================================================== */
 
-function addToCart(product, selectedSize = null) {
-    const size = selectedSize || "S";
+async function addToCart(
+    product,
+    selectedSize = null
+) {
+
+    const size =
+        selectedSize || "S";
 
     const existing =
         cart.find(
             item =>
-                String(item.id) === String(product.id) &&
+                String(item.id) ===
+                    String(product.id) &&
                 item.size === size
         );
 
     if (existing) {
+
         existing.quantity++;
+
     } else {
+
         cart.push({
+
             id: product.id,
+
             name: product.name,
-            price: Number(product.price) || 0,
-            size: size,
+
+            price:
+                Number(
+                    product.price
+                ) || 0,
+
+            size,
+
             quantity: 1
+
         });
     }
 
     renderCart();
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/cart",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    credentials:
+                        "include",
+
+                    body:
+                        JSON.stringify({
+                            productId:
+                                product.id,
+
+                            quantity: 1,
+
+                            size
+                        })
+                }
+            );
+
+        if (
+            response.status === 401
+        ) {
+
+            console.warn(
+                "Пользователь не вошёл в аккаунт"
+            );
+
+        }
+
+        else if (
+            !response.ok
+        ) {
+
+            let data = null;
+
+            try {
+                data =
+                    await response.json();
+            } catch {
+                // ignore
+            }
+
+            console.warn(
+                "Не удалось сохранить товар на сервере:",
+                response.status,
+                data?.message || ""
+            );
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Ошибка сохранения корзины на сервере:",
+            error
+        );
+    }
 }
 
 
@@ -355,7 +557,9 @@ function addToCart(product, selectedSize = null) {
 function createQuickViewGallery() {
 
     const imageContainer =
-        document.querySelector(".quick-view-image");
+        document.querySelector(
+            ".quick-view-image"
+        );
 
     if (!imageContainer) {
         return;
@@ -369,7 +573,9 @@ function createQuickViewGallery() {
     if (!thumbnails) {
 
         thumbnails =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         thumbnails.className =
             "quick-view-thumbnails";
@@ -385,9 +591,12 @@ function createQuickViewGallery() {
         (image, index) => {
 
             const thumbnail =
-                document.createElement("button");
+                document.createElement(
+                    "button"
+                );
 
-            thumbnail.type = "button";
+            thumbnail.type =
+                "button";
 
             thumbnail.className =
                 "quick-view-thumbnail";
@@ -397,8 +606,9 @@ function createQuickViewGallery() {
                 currentQuickViewImageIndex
             ) {
 
-                thumbnail.classList.add("active");
-
+                thumbnail.classList.add(
+                    "active"
+                );
             }
 
             thumbnail.innerHTML = `
@@ -412,7 +622,9 @@ function createQuickViewGallery() {
                 "click",
                 () => {
 
-                    showQuickViewImage(index);
+                    showQuickViewImage(
+                        index
+                    );
 
                 }
             );
@@ -441,7 +653,8 @@ function showQuickViewImage(index) {
 
     if (
         index < 0 ||
-        index >= currentQuickViewImages.length
+        index >=
+            currentQuickViewImages.length
     ) {
         return;
     }
@@ -453,9 +666,14 @@ function showQuickViewImage(index) {
         currentQuickViewImages[index];
 
     document
-        .querySelectorAll(".quick-view-thumbnail")
+        .querySelectorAll(
+            ".quick-view-thumbnail"
+        )
         .forEach(
-            (thumbnail, thumbnailIndex) => {
+            (
+                thumbnail,
+                thumbnailIndex
+            ) => {
 
                 thumbnail.classList.toggle(
                     "active",
@@ -483,13 +701,14 @@ function openQuickView(product) {
     currentQuickViewImages =
         getProductImages(product);
 
-    currentQuickViewImageIndex = 0;
+    currentQuickViewImageIndex =
+        0;
 
     if (quickViewName) {
 
         quickViewName.textContent =
-            product.name || "URBAN";
-
+            product.name ||
+            "URBAN";
     }
 
     if (quickViewDescription) {
@@ -497,7 +716,6 @@ function openQuickView(product) {
         quickViewDescription.textContent =
             product.description ||
             "Качественная одежда для повседневного городского стиля.";
-
     }
 
     if (quickViewCategory) {
@@ -505,82 +723,138 @@ function openQuickView(product) {
         quickViewCategory.textContent =
             product.category ||
             "URBAN";
-
     }
 
     if (quickViewPrice) {
 
         const price =
-            Number(product.price) || 0;
+            Number(
+                product.price
+            ) || 0;
 
         quickViewPrice.textContent =
             `${price.toFixed(2)} zł`;
-
     }
 
     const stock =
-        Number(product.stock) || 0;
+        Number(
+            product.stock
+        ) || 0;
 
     if (quickViewStock) {
-        quickViewStock.textContent = stock;
-        /* =====================================================
-   SIZE SELECTOR
-===================================================== */
 
-const sizes = Array.isArray(product.sizes)
-    ? product.sizes
-    : ["S", "M", "L", "XL"];
+        quickViewStock.textContent =
+            stock;
+            /* =====================================================
+           SIZE SELECTOR
+        ===================================================== */
 
-let quickViewSizes = document.querySelector(
-    ".quick-view-sizes"
-);
+        const sizes =
+            Array.isArray(
+                product.sizes
+            )
+                ? product.sizes
+                : [
+                    "S",
+                    "M",
+                    "L",
+                    "XL"
+                ];
 
-if (!quickViewSizes) {
-    quickViewSizes = document.createElement("div");
-    quickViewSizes.className = "quick-view-sizes";
+        let quickViewSizes =
+            document.querySelector(
+                ".quick-view-sizes"
+            );
 
-    const quickViewBottom =
-        document.querySelector(".quick-view-bottom");
+        if (!quickViewSizes) {
 
-    if (quickViewBottom) {
-        quickViewBottom.insertBefore(
-            quickViewSizes,
-            quickViewBottom.firstChild
-        );
-    }
-}
+            quickViewSizes =
+                document.createElement(
+                    "div"
+                );
 
-quickViewSizes.innerHTML = `
-    <div class="quick-view-size-title">
-        РАЗМЕР
-    </div>
+            quickViewSizes.className =
+                "quick-view-sizes";
 
-    <div class="quick-view-size-list">
-        ${sizes.map((size, index) => `
-            <button
-                type="button"
-                class="quick-view-size ${index === 0 ? "active" : ""}"
-                data-size="${escapeHTML(size)}"
-            >
-                ${escapeHTML(size)}
-            </button>
-        `).join("")}
-    </div>
-`;
+            const quickViewBottom =
+                document.querySelector(
+                    ".quick-view-bottom"
+                );
 
-quickViewSizes
-    .querySelectorAll(".quick-view-size")
-    .forEach(button => {
-        button.addEventListener("click", () => {
-            quickViewSizes
-                .querySelectorAll(".quick-view-size")
-                .forEach(item => {
-                    item.classList.remove("active");
-                });
+            if (quickViewBottom) {
 
-            button.classList.add("active");
-        });
-    });
+                quickViewBottom.insertBefore(
+                    quickViewSizes,
+                    quickViewBottom.firstChild
+                );
+            }
+        }
+
+        quickViewSizes.innerHTML = `
+            <div class="quick-view-size-title">
+                РАЗМЕР
+            </div>
+
+            <div class="quick-view-size-list">
+
+                ${sizes
+                    .map(
+                        (
+                            size,
+                            index
+                        ) => `
+                            <button
+                                type="button"
+                                class="quick-view-size ${
+                                    index === 0
+                                        ? "active"
+                                        : ""
+                                }"
+                                data-size="${escapeHTML(size)}"
+                            >
+                                ${escapeHTML(size)}
+                            </button>
+                        `
+                    )
+                    .join("")}
+
+            </div>
+        `;
+
+        quickViewSizes
+            .querySelectorAll(
+                ".quick-view-size"
+            )
+            .forEach(
+                button => {
+
+                    button.addEventListener(
+                        "click",
+                        () => {
+
+                            quickViewSizes
+                                .querySelectorAll(
+                                    ".quick-view-size"
+                                )
+                                .forEach(
+                                    item => {
+
+                                        item.classList.remove(
+                                            "active"
+                                        );
+
+                                    }
+                                );
+
+                            button.classList.add(
+                                "active"
+                            );
+
+                        }
+                    );
+
+                }
+            );
     }
 
     if (quickViewImage) {
@@ -589,12 +863,14 @@ quickViewSizes
             currentQuickViewImages[0];
 
         quickViewImage.alt =
-            product.name || "URBAN";
+            product.name ||
+            "URBAN";
 
         quickViewImage.onerror =
             function () {
 
-                this.onerror = null;
+                this.onerror =
+                    null;
 
                 this.src =
                     "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1200&q=90";
@@ -608,24 +884,29 @@ quickViewSizes
 
         if (stock <= 0) {
 
-            quickViewAdd.disabled = true;
+            quickViewAdd.disabled =
+                true;
 
             quickViewAdd.textContent =
                 "НЕТ В НАЛИЧИИ";
 
         } else {
 
-            quickViewAdd.disabled = false;
+            quickViewAdd.disabled =
+                false;
 
             quickViewAdd.textContent =
                 "ДОБАВИТЬ В КОРЗИНУ";
-
         }
     }
 
-    quickViewOverlay.classList.add("open");
+    quickViewOverlay.classList.add(
+        "open"
+    );
 
-    document.body.classList.add("no-scroll");
+    document.body.classList.add(
+        "no-scroll"
+    );
 }
 
 
@@ -639,11 +920,16 @@ function closeQuickView() {
         return;
     }
 
-    quickViewOverlay.classList.remove("open");
+    quickViewOverlay.classList.remove(
+        "open"
+    );
 
-    document.body.classList.remove("no-scroll");
+    document.body.classList.remove(
+        "no-scroll"
+    );
 
-    currentQuickViewProduct = null;
+    currentQuickViewProduct =
+        null;
 }
 
 
@@ -651,15 +937,22 @@ function closeQuickView() {
    CREATE PRODUCT CARD
    ===================================================== */
 
-function createProductCard(product, index) {
+function createProductCard(
+    product,
+    index
+) {
 
     const card =
-        document.createElement("article");
+        document.createElement(
+            "article"
+        );
 
-    card.className = "product";
+    card.className =
+        "product";
 
     card.dataset.category =
-        product.category || "all";
+        product.category ||
+        "all";
 
     card.style.animationDelay =
         `${index * 0.04}s`;
@@ -668,10 +961,14 @@ function createProductCard(product, index) {
         getProductImages(product);
 
     const price =
-        Number(product.price) || 0;
+        Number(
+            product.price
+        ) || 0;
 
     const stock =
-        Number(product.stock) || 0;
+        Number(
+            product.stock
+        ) || 0;
 
     const outOfStock =
         stock <= 0;
@@ -683,7 +980,8 @@ function createProductCard(product, index) {
             <img
                 src="${escapeHTML(images[0])}"
                 alt="${escapeHTML(
-                    product.name || "URBAN"
+                    product.name ||
+                    "URBAN"
                 )}"
                 class="product-image"
             >
@@ -700,7 +998,9 @@ function createProductCard(product, index) {
                 product.badge
                     ? `
                         <span class="product-badge">
-                            ${escapeHTML(product.badge)}
+                            ${escapeHTML(
+                                product.badge
+                            )}
                         </span>
                     `
                     : ""
@@ -721,7 +1021,8 @@ function createProductCard(product, index) {
 
                 <h3>
                     ${escapeHTML(
-                        product.name || "URBAN"
+                        product.name ||
+                        "URBAN"
                     )}
                 </h3>
 
@@ -729,7 +1030,8 @@ function createProductCard(product, index) {
 
             <p>
                 ${escapeHTML(
-                    product.description || ""
+                    product.description ||
+                    ""
                 )}
             </p>
 
@@ -766,7 +1068,9 @@ function createProductCard(product, index) {
     `;
 
     const image =
-        card.querySelector(".product-image");
+        card.querySelector(
+            ".product-image"
+        );
 
     if (image) {
 
@@ -774,18 +1078,20 @@ function createProductCard(product, index) {
             "error",
             function () {
 
-                this.onerror = null;
+                this.onerror =
+                    null;
 
                 this.src =
                     "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1200&q=90";
 
             }
         );
-
     }
 
     const quickButton =
-        card.querySelector(".quick-view-button");
+        card.querySelector(
+            ".quick-view-button"
+        );
 
     if (quickButton) {
 
@@ -795,15 +1101,18 @@ function createProductCard(product, index) {
 
                 event.stopPropagation();
 
-                openQuickView(product);
+                openQuickView(
+                    product
+                );
 
             }
         );
-
     }
 
     const button =
-        card.querySelector(".add-to-cart");
+        card.querySelector(
+            ".add-to-cart"
+        );
 
     if (
         button &&
@@ -816,7 +1125,9 @@ function createProductCard(product, index) {
 
                 event.stopPropagation();
 
-                addToCart(product);
+                addToCart(
+                    product
+                );
 
                 const oldText =
                     button.textContent;
@@ -836,11 +1147,12 @@ function createProductCard(product, index) {
 
             }
         );
-
     }
 
     const favorite =
-        card.querySelector(".product-favorite");
+        card.querySelector(
+            ".product-favorite"
+        );
 
     if (favorite) {
 
@@ -850,16 +1162,19 @@ function createProductCard(product, index) {
 
                 event.stopPropagation();
 
-                favorite.classList.toggle("active");
+                favorite.classList.toggle(
+                    "active"
+                );
 
                 favorite.textContent =
-                    favorite.classList.contains("active")
+                    favorite.classList.contains(
+                        "active"
+                    )
                         ? "♥"
                         : "♡";
 
             }
         );
-
     }
 
     return card;
@@ -870,10 +1185,14 @@ function createProductCard(product, index) {
    RENDER PRODUCTS
    ===================================================== */
 
-function renderProducts(products) {
+function renderProducts(
+    products
+) {
 
     const container =
-        document.querySelector("#products-grid");
+        document.querySelector(
+            "#products-grid"
+        );
 
     if (!container) {
 
@@ -887,9 +1206,13 @@ function renderProducts(products) {
     container.innerHTML = "";
 
     const uniqueProducts =
-        removeDuplicateProducts(products);
+        removeDuplicateProducts(
+            products
+        );
 
-    if (uniqueProducts.length === 0) {
+    if (
+        uniqueProducts.length === 0
+    ) {
 
         container.innerHTML = `
 
@@ -910,7 +1233,10 @@ function renderProducts(products) {
     }
 
     uniqueProducts.forEach(
-        (product, index) => {
+        (
+            product,
+            index
+        ) => {
 
             const card =
                 createProductCard(
@@ -918,12 +1244,12 @@ function renderProducts(products) {
                     index
                 );
 
-            container.appendChild(card);
-
+            container.appendChild(
+                card
+            );
         }
     );
-
-    console.log(
+        console.log(
         "Отображено товаров:",
         uniqueProducts.length
     );
@@ -943,29 +1269,33 @@ async function loadProducts() {
     try {
 
         const response =
-            await fetch("/products");
+            await fetch(
+                "/products"
+            );
 
         if (!response.ok) {
 
             throw new Error(
                 `Ошибка сервера: ${response.status}`
             );
-
         }
 
         const products =
             await response.json();
 
-        if (!Array.isArray(products)) {
+        if (
+            !Array.isArray(products)
+        ) {
 
             throw new Error(
                 "Сервер вернул неправильный формат товаров"
             );
-
         }
 
         databaseProducts =
-            removeDuplicateProducts(products);
+            removeDuplicateProducts(
+                products
+            );
 
         console.log(
             "Получено товаров:",
@@ -1016,14 +1346,13 @@ async function loadProducts() {
 
                 </div>
             `;
-
         }
     }
 }
 
 
 /* =====================================================
-   ⭐ NEW FILTER SYSTEM
+   FILTERS
    ===================================================== */
 
 function setupFilters() {
@@ -1038,253 +1367,190 @@ function setupFilters() {
         buttons.length
     );
 
-    buttons.forEach(button => {
+    buttons.forEach(
+        button => {
 
-        button.addEventListener(
-            "click",
-            () => {
+            button.addEventListener(
+                "click",
+                () => {
 
-                /* -------------------------------------
-                   Определяем кнопку
-                   ------------------------------------- */
+                    const text =
+                        button.textContent
+                            .trim()
+                            .toLowerCase();
 
-                const text =
-                    button.textContent
-                        .trim()
-                        .toLowerCase();
+                    const dataCategory =
+                        String(
+                            button.dataset.category ||
+                            ""
+                        )
+                            .trim()
+                            .toLowerCase();
 
-                const dataCategory =
-                    String(
-                        button.dataset.category || ""
-                    )
-                    .trim()
-                    .toLowerCase();
+                    buttons.forEach(
+                        item => {
 
-                console.log(
-                    "Нажата кнопка:",
-                    text,
-                    dataCategory
-                );
-
-
-                /* -------------------------------------
-                   ACTIVE
-                   ------------------------------------- */
-
-                buttons.forEach(item => {
-
-                    item.classList.remove(
-                        "active"
-                    );
-
-                });
-
-                button.classList.add("active");
-
-
-                /* -------------------------------------
-                   КАТАЛОГ / ВСЕ
-                   ------------------------------------- */
-
-                if (
-                    text === "каталог" ||
-                    text === "все" ||
-                    dataCategory === "all"
-                ) {
-
-                    renderProducts(
-                        databaseProducts
-                    );
-
-                    return;
-                }
-
-
-                /* -------------------------------------
-                   МУЖСКОЕ
-                   PostgreSQL: gender = male
-                   ------------------------------------- */
-
-                if (
-                    text === "мужское" ||
-                    text === "мужчины" ||
-                    dataCategory === "male" ||
-                    dataCategory === "men" ||
-                    dataCategory === "мужское"
-                ) {
-
-                    const filtered =
-                        databaseProducts.filter(
-                            product => {
-
-                                const gender =
-                                    String(
-                                        product.gender || ""
-                                    )
-                                    .trim()
-                                    .toLowerCase();
-
-                                return (
-                                    gender === "male" ||
-                                    gender === "мужское" ||
-                                    gender === "men"
-                                );
-
-                            }
-                        );
-
-                    console.log(
-                        "Мужские товары:",
-                        filtered.length
-                    );
-
-                    renderProducts(filtered);
-
-                    return;
-                }
-
-
-                /* -------------------------------------
-                   ЖЕНСКОЕ
-                   PostgreSQL: gender = female
-                   ------------------------------------- */
-
-                if (
-                    text === "женское" ||
-                    text === "женщины" ||
-                    dataCategory === "female" ||
-                    dataCategory === "women" ||
-                    dataCategory === "женское"
-                ) {
-
-                    const filtered =
-                        databaseProducts.filter(
-                            product => {
-
-                                const gender =
-                                    String(
-                                        product.gender || ""
-                                    )
-                                    .trim()
-                                    .toLowerCase();
-
-                                return (
-                                    gender === "female" ||
-                                    gender === "женское" ||
-                                    gender === "women"
-                                );
-
-                            }
-                        );
-
-                    console.log(
-                        "Женские товары:",
-                        filtered.length
-                    );
-
-                    renderProducts(filtered);
-
-                    return;
-                }
-
-
-                /* -------------------------------------
-                   НОВИНКИ
-                   PostgreSQL: is_new = true
-                   ------------------------------------- */
-
-                if (
-                    text === "новинки" ||
-                    text === "новинки"
-                ) {
-
-                    const filtered =
-                        databaseProducts.filter(
-                            product =>
-                                product.is_new === true ||
-                                product.is_new === "true" ||
-                                product.is_new === 1
-                        );
-
-                    console.log(
-                        "Новинки:",
-                        filtered.length
-                    );
-
-                    renderProducts(filtered);
-
-                    return;
-                }
-
-
-                /* -------------------------------------
-                   SALE
-                   PostgreSQL: is_sale = true
-                   ------------------------------------- */
-
-                if (
-                    text === "sale" ||
-                    text === "скидки" ||
-                    text === "распродажа"
-                ) {
-
-                    const filtered =
-                        databaseProducts.filter(
-                            product =>
-                                product.is_sale === true ||
-                                product.is_sale === "true" ||
-                                product.is_sale === 1
-                        );
-
-                    console.log(
-                        "SALE:",
-                        filtered.length
-                    );
-
-                    renderProducts(filtered);
-
-                    return;
-                }
-
-
-                /* -------------------------------------
-                   ОБЫЧНЫЕ КАТЕГОРИИ
-                   hoodies / tshirts / pants / jackets
-                   ------------------------------------- */
-
-                const filtered =
-                    databaseProducts.filter(
-                        product => {
-
-                            const category =
-                                String(
-                                    product.category || ""
-                                )
-                                .trim()
-                                .toLowerCase();
-
-                            return (
-                                category === dataCategory ||
-                                category === text
+                            item.classList.remove(
+                                "active"
                             );
-
                         }
                     );
 
-                console.log(
-                    "Категория:",
-                    dataCategory,
-                    "Товаров:",
-                    filtered.length
-                );
+                    button.classList.add(
+                        "active"
+                    );
 
-                renderProducts(filtered);
+                    if (
+                        text === "каталог" ||
+                        text === "все" ||
+                        dataCategory === "all"
+                    ) {
 
-            }
-        );
+                        renderProducts(
+                            databaseProducts
+                        );
 
-    });
+                        return;
+                    }
 
+                    if (
+                        text === "мужское" ||
+                        text === "мужчины" ||
+                        dataCategory === "male" ||
+                        dataCategory === "men" ||
+                        dataCategory === "мужское"
+                    ) {
+
+                        const filtered =
+                            databaseProducts.filter(
+                                product => {
+
+                                    const gender =
+                                        String(
+                                            product.gender ||
+                                            ""
+                                        )
+                                            .trim()
+                                            .toLowerCase();
+
+                                    return (
+                                        gender === "male" ||
+                                        gender === "мужское" ||
+                                        gender === "men"
+                                    );
+                                }
+                            );
+
+                        renderProducts(
+                            filtered
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        text === "женское" ||
+                        text === "женщины" ||
+                        dataCategory === "female" ||
+                        dataCategory === "women" ||
+                        dataCategory === "женское"
+                    ) {
+
+                        const filtered =
+                            databaseProducts.filter(
+                                product => {
+
+                                    const gender =
+                                        String(
+                                            product.gender ||
+                                            ""
+                                        )
+                                            .trim()
+                                            .toLowerCase();
+
+                                    return (
+                                        gender === "female" ||
+                                        gender === "женское" ||
+                                        gender === "women"
+                                    );
+                                }
+                            );
+
+                        renderProducts(
+                            filtered
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        text === "новинки"
+                    ) {
+
+                        const filtered =
+                            databaseProducts.filter(
+                                product =>
+                                    product.is_new === true ||
+                                    product.is_new === "true" ||
+                                    product.is_new === 1
+                            );
+
+                        renderProducts(
+                            filtered
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        text === "sale" ||
+                        text === "скидки" ||
+                        text === "распродажа"
+                    ) {
+
+                        const filtered =
+                            databaseProducts.filter(
+                                product =>
+                                    product.is_sale === true ||
+                                    product.is_sale === "true" ||
+                                    product.is_sale === 1
+                            );
+
+                        renderProducts(
+                            filtered
+                        );
+
+                        return;
+                    }
+
+                    const filtered =
+                        databaseProducts.filter(
+                            product => {
+
+                                const category =
+                                    String(
+                                        product.category ||
+                                        ""
+                                    )
+                                        .trim()
+                                        .toLowerCase();
+
+                                return (
+                                    category ===
+                                        dataCategory ||
+                                    category ===
+                                        text
+                                );
+                            }
+                        );
+
+                    renderProducts(
+                        filtered
+                    );
+                }
+            );
+        }
+    );
 }
 
 
@@ -1299,16 +1565,20 @@ if (cartButton) {
         () => {
 
             if (cartModal) {
-                cartModal.classList.add("open");
+
+                cartModal.classList.add(
+                    "open"
+                );
             }
 
             if (cartOverlay) {
-                cartOverlay.classList.add("open");
-            }
 
+                cartOverlay.classList.add(
+                    "open"
+                );
+            }
         }
     );
-
 }
 
 
@@ -1319,13 +1589,18 @@ if (cartButton) {
 function closeCartModal() {
 
     if (cartModal) {
-        cartModal.classList.remove("open");
+
+        cartModal.classList.remove(
+            "open"
+        );
     }
 
     if (cartOverlay) {
-        cartOverlay.classList.remove("open");
-    }
 
+        cartOverlay.classList.remove(
+            "open"
+        );
+    }
 }
 
 if (closeCart) {
@@ -1334,7 +1609,6 @@ if (closeCart) {
         "click",
         closeCartModal
     );
-
 }
 
 if (cartOverlay) {
@@ -1343,7 +1617,6 @@ if (cartOverlay) {
         "click",
         closeCartModal
     );
-
 }
 
 
@@ -1355,15 +1628,34 @@ if (clearCart) {
 
     clearCart.addEventListener(
         "click",
-        () => {
+        async () => {
 
             cart = [];
 
             renderCart();
 
+            try {
+
+                await fetch(
+                    "/api/cart",
+                    {
+                        method:
+                            "DELETE",
+
+                        credentials:
+                            "include"
+                    }
+                );
+
+            } catch (error) {
+
+                console.warn(
+                    "Ошибка очистки корзины на сервере:",
+                    error
+                );
+            }
         }
     );
-
 }
 
 
@@ -1377,7 +1669,6 @@ if (quickViewClose) {
         "click",
         closeQuickView
     );
-
 }
 
 if (quickViewOverlay) {
@@ -1392,17 +1683,14 @@ if (quickViewOverlay) {
             ) {
 
                 closeQuickView();
-
             }
-
         }
     );
-
 }
 
 
 /* =====================================================
-   QUICK VIEW ADD TO CART
+   QUICK VIEW ADD
    ===================================================== */
 
 if (quickViewAdd) {
@@ -1411,7 +1699,10 @@ if (quickViewAdd) {
         "click",
         () => {
 
-            if (!currentQuickViewProduct) {
+            if (
+                !currentQuickViewProduct
+            ) {
+
                 return;
             }
 
@@ -1421,21 +1712,24 @@ if (quickViewAdd) {
                 ) || 0;
 
             if (stock <= 0) {
+
                 return;
             }
 
             const selectedSizeButton =
-    document.querySelector(
-        ".quick-view-size.active"
-    );
+                document.querySelector(
+                    ".quick-view-size.active"
+                );
 
-const selectedSize =
-    selectedSizeButton?.dataset.size || "S";
+            const selectedSize =
+                selectedSizeButton?.dataset
+                    .size || "S";
 
-addToCart(
-    currentQuickViewProduct,
-    selectedSize
-);
+            addToCart(
+                currentQuickViewProduct,
+                selectedSize
+            );
+
             quickViewAdd.textContent =
                 "ДОБАВЛЕНО ✓";
 
@@ -1446,21 +1740,18 @@ addToCart(
 
                         quickViewAdd.textContent =
                             "ДОБАВИТЬ В КОРЗИНУ";
-
                     }
 
                 },
                 1000
             );
-
         }
     );
-
 }
 
 
 /* =====================================================
-   SEARCH OPEN
+   SEARCH
    ===================================================== */
 
 if (searchButton) {
@@ -1469,31 +1760,26 @@ if (searchButton) {
         "click",
         () => {
 
-            if (searchPanel) {
-
-                searchPanel.classList.toggle("open");
-
-                if (
-                    searchPanel.classList.contains("open")
-                ) {
-
-                    if (searchInput) {
-                        searchInput.focus();
-                    }
-
-                }
-
+            if (!searchPanel) {
+                return;
             }
 
+            searchPanel.classList.toggle(
+                "open"
+            );
+
+            if (
+                searchPanel.classList.contains(
+                    "open"
+                ) &&
+                searchInput
+            ) {
+
+                searchInput.focus();
+            }
         }
     );
-
 }
-
-
-/* =====================================================
-   SEARCH CLOSE
-   ===================================================== */
 
 if (closeSearch) {
 
@@ -1503,19 +1789,13 @@ if (closeSearch) {
 
             if (searchPanel) {
 
-                searchPanel.classList.remove("open");
-
+                searchPanel.classList.remove(
+                    "open"
+                );
             }
-
         }
     );
-
 }
-
-
-/* =====================================================
-   SEARCH PRODUCTS
-   ===================================================== */
 
 if (searchInput) {
 
@@ -1543,32 +1823,35 @@ if (searchInput) {
 
                         const name =
                             String(
-                                product.name || ""
+                                product.name ||
+                                ""
                             )
-                            .toLowerCase();
+                                .toLowerCase();
 
                         const description =
                             String(
-                                product.description || ""
+                                product.description ||
+                                ""
                             )
-                            .toLowerCase();
+                                .toLowerCase();
 
                         return (
-                            name.includes(query) ||
-                            description.includes(query)
+                            name.includes(
+                                query
+                            ) ||
+                            description.includes(
+                                query
+                            )
                         );
-
                     }
                 );
 
-            renderProducts(filtered);
-
+            renderProducts(
+                filtered
+            );
         }
     );
-
 }
-
-
 /* =====================================================
    NEWSLETTER
    ===================================================== */
@@ -1582,7 +1865,9 @@ if (newsletterForm) {
             event.preventDefault();
 
             const button =
-                newsletterForm.querySelector("button");
+                newsletterForm.querySelector(
+                    "button"
+                );
 
             if (!button) {
                 return;
@@ -1605,10 +1890,8 @@ if (newsletterForm) {
                 },
                 1500
             );
-
         }
     );
-
 }
 
 
@@ -1620,7 +1903,9 @@ document.addEventListener(
     "keydown",
     event => {
 
-        if (event.key === "Escape") {
+        if (
+            event.key === "Escape"
+        ) {
 
             closeQuickView();
 
@@ -1628,12 +1913,11 @@ document.addEventListener(
 
             if (searchPanel) {
 
-                searchPanel.classList.remove("open");
-
+                searchPanel.classList.remove(
+                    "open"
+                );
             }
-
         }
-
     }
 );
 
@@ -1655,6 +1939,893 @@ document.addEventListener(
         console.log(
             "URBAN STORE запущен ✓"
         );
+    }
+);
 
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
+const loginForm =
+    document.getElementById(
+        "login-form"
+    );
+
+const loginMessage =
+    document.getElementById(
+        "login-message"
+    );
+
+const loginView =
+    document.getElementById(
+        "login-view"
+    );
+
+const userView =
+    document.getElementById(
+        "user-view"
+    );
+
+const userName =
+    document.getElementById(
+        "user-name"
+    );
+
+const userEmail =
+    document.getElementById(
+        "user-email"
+    );
+
+
+/* =====================================================
+   LOGIN SUBMIT
+===================================================== */
+
+if (loginForm) {
+
+    loginForm.addEventListener(
+        "submit",
+        async event => {
+
+            event.preventDefault();
+
+            const emailInput =
+                document.getElementById(
+                    "login-email"
+                );
+
+            const passwordInput =
+                document.getElementById(
+                    "login-password"
+                );
+
+            const email =
+                emailInput
+                    ? emailInput.value.trim()
+                    : "";
+
+            const password =
+                passwordInput
+                    ? passwordInput.value
+                    : "";
+
+            if (
+                !email ||
+                !password
+            ) {
+
+                if (loginMessage) {
+
+                    loginMessage.textContent =
+                        "Заполни все поля";
+                }
+
+                return;
+            }
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/api/login",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            credentials:
+                                "include",
+
+                            body:
+                                JSON.stringify({
+                                    email,
+                                    password
+                                })
+                        }
+                    );
+
+                let data = null;
+
+                try {
+
+                    data =
+                        await response.json();
+
+                } catch {
+
+                    data = null;
+                }
+
+                if (
+                    !response.ok ||
+                    !data ||
+                    !data.success
+                ) {
+
+                    if (loginMessage) {
+
+                        loginMessage.textContent =
+                            data?.message ||
+                            `Ошибка входа: ${response.status}`;
+                    }
+
+                    return;
+                }
+
+                if (loginMessage) {
+
+                    loginMessage.textContent =
+                        "Вход выполнен ✓";
+                }
+
+                if (userName) {
+
+                    userName.textContent =
+                        data.user?.name ||
+                        "Пользователь";
+                }
+
+                if (userEmail) {
+
+                    userEmail.textContent =
+                        data.user?.email ||
+                        "";
+                }
+
+                if (loginView) {
+
+                    loginView.classList.remove(
+                        "active"
+                    );
+                }
+
+                if (userView) {
+
+                    userView.classList.add(
+                        "active"
+                    );
+                }
+
+                console.log(
+                    "LOGIN: успешно",
+                    data.user
+                );
+
+                await loadCart();
+
+            } catch (error) {
+
+                console.error(
+                    "LOGIN ERROR:",
+                    error
+                );
+
+                if (loginMessage) {
+
+                    loginMessage.textContent =
+                        "Ошибка соединения с сервером";
+                }
+            }
+        }
+    );
+}
+
+
+/* =====================================================
+   RESTORE SESSION
+===================================================== */
+
+(async function restoreSession() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/me",
+                {
+                    credentials:
+                        "include"
+                }
+            );
+
+        if (
+            !response.ok
+        ) {
+            return;
+        }
+
+        const data =
+            await response.json();
+
+        if (
+            !data.loggedIn ||
+            !data.user
+        ) {
+
+            return;
+        }
+
+        if (userName) {
+
+            userName.textContent =
+                data.user.name ||
+                "Пользователь";
+        }
+
+        if (userEmail) {
+
+            userEmail.textContent =
+                data.user.email ||
+                "";
+        }
+
+        if (loginView) {
+
+            loginView.classList.remove(
+                "active"
+            );
+        }
+
+        if (userView) {
+
+            userView.classList.add(
+                "active"
+            );
+        }
+
+        console.log(
+            "SESSION: восстановлена",
+            data.user
+        );
+
+        await loadCart();
+
+    } catch (error) {
+
+        console.warn(
+            "SESSION RESTORE ERROR:",
+            error
+        );
+    }
+
+})();
+
+
+/* =====================================================
+   CHECKOUT BUTTON
+===================================================== */
+
+document.addEventListener(
+    "click",
+    event => {
+
+        const target =
+            event.target instanceof Element
+                ? event.target
+                : null;
+
+        if (!target) {
+            return;
+        }
+
+        const checkoutButton =
+            target.closest(
+                ".checkout-button"
+            );
+
+        if (!checkoutButton) {
+            return;
+        }
+
+        console.log(
+            "CHECKOUT: кнопка нажата"
+        );
+
+        if (
+            !cart ||
+            cart.length === 0
+        ) {
+
+            alert(
+                "Корзина пуста"
+            );
+
+            return;
+        }
+
+        const checkoutWindow =
+            document.createElement(
+                "div"
+            );
+
+        checkoutWindow.style.position =
+            "fixed";
+
+        checkoutWindow.style.inset =
+            "0";
+
+        checkoutWindow.style.background =
+            "rgba(0,0,0,0.55)";
+
+        checkoutWindow.style.zIndex =
+            "99999";
+
+        checkoutWindow.style.display =
+            "flex";
+
+        checkoutWindow.style.alignItems =
+            "center";
+
+        checkoutWindow.style.justifyContent =
+            "center";
+
+        checkoutWindow.style.padding =
+            "20px";
+
+        const total =
+            cart.reduce(
+                (
+                    sum,
+                    item
+                ) =>
+                    sum +
+                    (
+                        Number(
+                            item.price
+                        ) || 0
+                    ) *
+                    Number(
+                        item.quantity ||
+                        0
+                    ),
+                0
+            );
+
+        checkoutWindow.innerHTML = `
+            <div
+                style="
+                    width:100%;
+                    max-width:520px;
+                    max-height:90vh;
+                    overflow-y:auto;
+                    background:#fff;
+                    padding:35px;
+                    box-sizing:border-box;
+                    position:relative;
+                "
+            >
+
+                <button
+                    type="button"
+                    id="checkout-close"
+                    style="
+                        position:absolute;
+                        top:15px;
+                        right:18px;
+                        border:0;
+                        background:none;
+                        font-size:28px;
+                        cursor:pointer;
+                    "
+                >
+                    ×
+                </button>
+
+                <p
+                    style="
+                        font-size:11px;
+                        letter-spacing:3px;
+                        color:#777;
+                        margin:0 0 10px;
+                    "
+                >
+                    URBAN STORE
+                </p>
+                <h2
+                    style="
+                        margin:0 0 30px;
+                        font-size:30px;
+                    "
+                >
+                    Оформление заказа
+                </h2>
+
+                <form id="checkout-form">
+
+                    <label
+                        style="
+                            display:block;
+                            margin-bottom:18px;
+                            font-size:13px;
+                        "
+                    >
+                        Имя
+
+                        <input
+                            id="checkout-name"
+                            type="text"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                margin-top:7px;
+                                padding:13px;
+                                border:1px solid #ddd;
+                                font-size:14px;
+                            "
+                        >
+                    </label>
+
+                    <label
+                        style="
+                            display:block;
+                            margin-bottom:18px;
+                            font-size:13px;
+                        "
+                    >
+                        Телефон
+
+                        <input
+                            id="checkout-phone"
+                            type="tel"
+                            placeholder="+48 000 000 000"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                margin-top:7px;
+                                padding:13px;
+                                border:1px solid #ddd;
+                                font-size:14px;
+                            "
+                        >
+                    </label>
+
+                    <label
+                        style="
+                            display:block;
+                            margin-bottom:18px;
+                            font-size:13px;
+                        "
+                    >
+                        Email
+
+                        <input
+                            id="checkout-email"
+                            type="email"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                margin-top:7px;
+                                padding:13px;
+                                border:1px solid #ddd;
+                                font-size:14px;
+                            "
+                        >
+                    </label>
+
+                    <label
+                        style="
+                            display:block;
+                            margin-bottom:18px;
+                            font-size:13px;
+                        "
+                    >
+                        Способ доставки
+
+                        <select
+                            id="checkout-delivery"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                margin-top:7px;
+                                padding:13px;
+                                border:1px solid #ddd;
+                                font-size:14px;
+                                background:#fff;
+                            "
+                        >
+                            <option value="">
+                                Выберите способ доставки
+                            </option>
+
+                            <option value="InPost">
+                                InPost
+                            </option>
+
+                            <option value="Курьер">
+                                Курьер
+                            </option>
+
+                            <option value="Самовывоз">
+                                Самовывоз
+                            </option>
+                        </select>
+                    </label>
+
+                    <label
+                        style="
+                            display:block;
+                            margin-bottom:18px;
+                            font-size:13px;
+                        "
+                    >
+                        Адрес доставки
+
+                        <textarea
+                            id="checkout-address"
+                            rows="4"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                margin-top:7px;
+                                padding:13px;
+                                border:1px solid #ddd;
+                                font-size:14px;
+                                resize:vertical;
+                            "
+                        ></textarea>
+                    </label>
+
+                    <label
+                        style="
+                            display:block;
+                            margin-bottom:25px;
+                            font-size:13px;
+                        "
+                    >
+                        Способ оплаты
+
+                        <select
+                            id="checkout-payment"
+                            required
+                            style="
+                                width:100%;
+                                box-sizing:border-box;
+                                margin-top:7px;
+                                padding:13px;
+                                border:1px solid #ddd;
+                                font-size:14px;
+                                background:#fff;
+                            "
+                        >
+                            <option value="">
+                                Выберите способ оплаты
+                            </option>
+
+                            <option value="При получении">
+                                При получении
+                            </option>
+
+                            <option value="Карта">
+                                Банковская карта
+                            </option>
+                        </select>
+                    </label>
+
+                    <div
+                        style="
+                            display:flex;
+                            justify-content:space-between;
+                            padding:18px 0;
+                            border-top:1px solid #ddd;
+                            border-bottom:1px solid #ddd;
+                            margin-bottom:20px;
+                            font-size:16px;
+                        "
+                    >
+
+                        <span>
+                            Итого
+                        </span>
+
+                        <strong>
+                            ${total.toFixed(2)} zł
+                        </strong>
+
+                    </div>
+
+                    <button
+                        type="submit"
+                        style="
+                            width:100%;
+                            padding:16px;
+                            border:0;
+                            background:#111;
+                            color:#fff;
+                            font-size:12px;
+                            font-weight:bold;
+                            cursor:pointer;
+                            letter-spacing:1px;
+                        "
+                    >
+                        ПОДТВЕРДИТЬ ЗАКАЗ
+                    </button>
+
+                </form>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            checkoutWindow
+        );
+
+        const closeButton =
+            checkoutWindow.querySelector(
+                "#checkout-close"
+            );
+
+        const checkoutForm =
+            checkoutWindow.querySelector(
+                "#checkout-form"
+            );
+
+        if (
+            !closeButton ||
+            !checkoutForm
+        ) {
+
+            console.error(
+                "CHECKOUT: элементы формы не найдены"
+            );
+
+            checkoutWindow.remove();
+
+            return;
+        }
+
+        closeButton.addEventListener(
+            "click",
+            () => {
+
+                checkoutWindow.remove();
+
+            }
+        );
+
+        checkoutForm.addEventListener(
+            "submit",
+            async event => {
+
+                event.preventDefault();
+
+                const orderData = {
+
+                    customerName:
+                        document
+                            .getElementById(
+                                "checkout-name"
+                            )
+                            .value
+                            .trim(),
+
+                    phone:
+                        document
+                            .getElementById(
+                                "checkout-phone"
+                            )
+                            .value
+                            .trim(),
+
+                    email:
+                        document
+                            .getElementById(
+                                "checkout-email"
+                            )
+                            .value
+                            .trim(),
+
+                    deliveryMethod:
+                        document
+                            .getElementById(
+                                "checkout-delivery"
+                            )
+                            .value,
+
+                    deliveryAddress:
+                        document
+                            .getElementById(
+                                "checkout-address"
+                            )
+                            .value
+                            .trim(),
+
+                    paymentMethod:
+                        document
+                            .getElementById(
+                                "checkout-payment"
+                            )
+                            .value,
+
+                    items:
+                        cart
+                };
+
+                console.log(
+                    "CHECKOUT: отправка заказа",
+                    orderData
+                );
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/api/orders",
+                            {
+                                method:
+                                    "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                credentials:
+                                    "include",
+
+                                body:
+                                    JSON.stringify(
+                                        orderData
+                                    )
+                            }
+                        );
+
+                    let data = null;
+
+                    try {
+
+                        data =
+                            await response.json();
+
+                    } catch {
+
+                        data = null;
+                    }
+
+                    console.log(
+                        "ORDER RESPONSE:",
+                        data
+                    );
+
+                    if (
+                        !response.ok ||
+                        !data ||
+                        !data.success
+                    ) {
+
+                        if (
+                            response.status === 401
+                        ) {
+
+                            alert(
+                                "Сначала войдите в аккаунт"
+                            );
+
+                        } else {
+
+                            alert(
+                                data?.message ||
+                                `Не удалось создать заказ: ${response.status}`
+                            );
+                        }
+
+                        return;
+                    }
+
+                    alert(
+                        `Заказ №${data.order.id} успешно создан!`
+                    );
+
+                    checkoutWindow.remove();
+
+                    cart = [];
+
+                    renderCart();
+
+                } catch (error) {
+
+                    console.error(
+                        "CREATE ORDER ERROR:",
+                        error
+                    );
+
+                    alert(
+                        "Ошибка соединения с сервером"
+                    );
+                }
+            }
+        );
+    }
+);
+/* =====================================================
+   FINAL SESSION / CART REFRESH
+   ===================================================== */
+
+window.addEventListener(
+    "focus",
+    () => {
+
+        if (
+            typeof loadCart ===
+            "function"
+        ) {
+
+            loadCart();
+        }
+    }
+);
+
+
+/* =====================================================
+   INITIAL CART LOAD
+   ===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/me",
+                    {
+                        credentials:
+                            "include"
+                    }
+                );
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data =
+                await response.json();
+
+            if (
+                data.loggedIn &&
+                data.user
+            ) {
+
+                await loadCart();
+
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "INITIAL SESSION CHECK ERROR:",
+                error
+            );
+        }
     }
 );

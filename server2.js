@@ -3,24 +3,40 @@ require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
 const crypto = require("crypto");
+const path = require("path");
 
 const app = express();
+const PORT = Number(process.env.PORT) || 3000;
 
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 /* =====================================================
    POSTGRESQL
 ===================================================== */
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
+const isLocalDatabase =
+    !process.env.DATABASE_URL ||
+    /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL);
+
+const poolConfig = process.env.DATABASE_URL
+    ? {
+          connectionString: process.env.DATABASE_URL,
+          ssl: isLocalDatabase
+              ? false
+              : { rejectUnauthorized: false }
+      }
+    : {
+          user: process.env.DB_USER,
+          host: process.env.DB_HOST,
+          database: process.env.DB_NAME,
+          password: process.env.DB_PASSWORD,
+          port: Number(process.env.DB_PORT) || 5432,
+          ssl: false
+      };
+
+const pool = new Pool(poolConfig);
 
 pool.on("error", (error) => {
     console.error("POSTGRESQL POOL ERROR:", error);
@@ -42,24 +58,20 @@ const ADMIN_PASSWORD =
 const sessions = new Map();
 
 /* =====================================================
-   PASSWORD HASH
+   PASSWORD
 ===================================================== */
 
 function hashPassword(password) {
-    const salt = crypto
-        .randomBytes(16)
-        .toString("hex");
+    const salt =
+        crypto.randomBytes(16).toString("hex");
 
-    const hash = crypto
-        .scryptSync(password, salt, 64)
-        .toString("hex");
+    const hash =
+        crypto
+            .scryptSync(password, salt, 64)
+            .toString("hex");
 
     return `${salt}:${hash}`;
 }
-
-/* =====================================================
-   PASSWORD VERIFY
-===================================================== */
 
 function verifyPassword(password, storedPassword) {
     try {
@@ -67,86 +79,87 @@ function verifyPassword(password, storedPassword) {
             return false;
         }
 
-        const parts = String(storedPassword).split(":");
+        const parts =
+            String(storedPassword).split(":");
 
         if (parts.length !== 2) {
             return false;
         }
 
         const salt = parts[0];
-        const originalHash = parts[1];
+        const storedHash = parts[1];
 
-        const hash = crypto
-            .scryptSync(password, salt, 64)
-            .toString("hex");
+        const hash =
+            crypto
+                .scryptSync(password, salt, 64)
+                .toString("hex");
 
         const a = Buffer.from(hash, "hex");
-        const b = Buffer.from(originalHash, "hex");
+        const b = Buffer.from(storedHash, "hex");
 
-        if (a.length !== b.length) {
-            return false;
-        }
-
-        return crypto.timingSafeEqual(a, b);
+        return (
+            a.length === b.length &&
+            crypto.timingSafeEqual(a, b)
+        );
 
     } catch (error) {
-        console.error("PASSWORD VERIFY ERROR:", error);
+        console.error(
+            "PASSWORD VERIFY ERROR:",
+            error
+        );
+
         return false;
     }
 }
-
-/* =====================================================
-   IS ADMIN
-===================================================== */
 
 function isAdminEmail(email) {
     return (
         String(email || "")
             .trim()
-            .toLowerCase() === ADMIN_EMAIL.toLowerCase()
+            .toLowerCase() ===
+        ADMIN_EMAIL.toLowerCase()
     );
 }
 
 /* =====================================================
-   CREATE SESSION
+   SESSION
 ===================================================== */
 
 function createSession(user) {
-    const token = crypto
-        .randomBytes(32)
-        .toString("hex");
+    const token =
+        crypto
+            .randomBytes(32)
+            .toString("hex");
 
     sessions.set(token, {
         id: user.id,
         name: user.name,
         email: user.email,
-        isAdmin: isAdminEmail(user.email)
+        isAdmin:
+            isAdminEmail(user.email)
     });
 
     return token;
 }
 
-/* =====================================================
-   GET SESSION
-===================================================== */
-
 function getSession(req) {
-    const cookieHeader = req.headers.cookie || "";
+    const cookieHeader =
+        req.headers.cookie || "";
 
-    const match = cookieHeader.match(
-        /urban_session=([^;]+)/
-    );
+    const match =
+        cookieHeader.match(
+            /urban_session=([^;]+)/
+        );
 
     if (!match) {
         return null;
     }
 
-    return sessions.get(match[1]) || null;
+    return (
+        sessions.get(match[1]) ||
+        null
+    );
 }
-
-/* =====================================================
-   SET COOKIE
-===================================================== */
 
 function setSessionCookie(res, token) {
     res.setHeader(
@@ -154,10 +167,6 @@ function setSessionCookie(res, token) {
         `urban_session=${token}; HttpOnly; Path=/; SameSite=Lax`
     );
 }
-
-/* =====================================================
-   CLEAR COOKIE
-===================================================== */
 
 function clearSessionCookie(res) {
     res.setHeader(
@@ -171,12 +180,14 @@ function clearSessionCookie(res) {
 ===================================================== */
 
 function requireAuth(req, res, next) {
-    const user = getSession(req);
+    const user =
+        getSession(req);
 
     if (!user) {
         return res.status(401).json({
             success: false,
-            message: "Необходимо войти в аккаунт"
+            message:
+                "Необходимо войти в аккаунт"
         });
     }
 
@@ -185,24 +196,25 @@ function requireAuth(req, res, next) {
     next();
 }
 
-/* =====================================================
-   ADMIN AUTH
-===================================================== */
-
 function requireAdmin(req, res, next) {
-    const user = getSession(req);
+    const user =
+        getSession(req);
 
     if (!user) {
         return res.status(401).json({
             success: false,
-            message: "Необходимо войти в аккаунт"
+            message:
+                "Необходимо войти в аккаунт"
         });
     }
 
-    if (!isAdminEmail(user.email)) {
+    if (
+        !isAdminEmail(user.email)
+    ) {
         return res.status(403).json({
             success: false,
-            message: "Доступ запрещён"
+            message:
+                "Доступ запрещён"
         });
     }
 
@@ -216,386 +228,517 @@ function requireAdmin(req, res, next) {
 ===================================================== */
 
 app.get("/admin", (req, res) => {
-    const user = getSession(req);
+    const user =
+        getSession(req);
 
     if (!user) {
         return res.redirect("/");
     }
 
-    if (!isAdminEmail(user.email)) {
-        return res.status(403).send("Доступ запрещён");
+    if (
+        !isAdminEmail(user.email)
+    ) {
+        return res.status(403).send(
+            "Доступ запрещён"
+        );
     }
 
-    res.sendFile(
-        __dirname + "/admin.html/admin.html"
-    );
+    const candidates = [
+        path.join(
+            __dirname,
+            "admin.html"
+        ),
+        path.join(
+            __dirname,
+            "admin.html",
+            "admin.html"
+        )
+    ];
+
+    const fs = require("fs");
+
+    const file =
+        candidates.find(
+            (item) =>
+                fs.existsSync(item)
+        );
+
+    if (!file) {
+        return res.status(404).send(
+            "Файл admin.html не найден"
+        );
+    }
+
+    res.sendFile(file);
 });
 
 /* =====================================================
    DATABASE TEST
 ===================================================== */
 
-app.get("/test-db", async (req, res) => {
-    try {
-        const result = await pool.query(
-            "SELECT NOW()"
-        );
+app.get(
+    "/test-db",
+    async (req, res) => {
 
-        res.json({
-            success: true,
-            message: "PostgreSQL подключен",
-            time: result.rows[0].now
-        });
+        try {
 
-    } catch (error) {
-        console.error(
-            "DATABASE TEST ERROR:",
-            error
-        );
+            const result =
+                await pool.query(
+                    "SELECT NOW()"
+                );
 
-        res.status(500).json({
-            success: false,
-            message: "Ошибка подключения к PostgreSQL"
-        });
+            res.json({
+                success: true,
+                message:
+                    "PostgreSQL подключен",
+                time:
+                    result.rows[0].now
+            });
+
+        } catch (error) {
+
+            console.error(
+                "DATABASE TEST ERROR:",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                message:
+                    "Ошибка подключения к PostgreSQL"
+            });
+        }
     }
-});
+);
 
 /* =====================================================
    PRODUCTS
 ===================================================== */
 
-app.get("/products", async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT
-                id,
-                name,
-                description,
-                price,
-                image,
-                stock,
-                created_at,
-                category
-            FROM products
-            ORDER BY id ASC
-        `);
+app.get(
+    "/products",
+    async (req, res) => {
 
-        res.json(result.rows);
+        try {
 
-    } catch (error) {
-        console.error(
-            "PRODUCTS ERROR:",
-            error
-        );
+            const result =
+                await pool.query(`
+                    SELECT
+                        id,
+                        name,
+                        description,
+                        price,
+                        image,
+                        stock,
+                        created_at,
+                        category
+                    FROM products
+                    ORDER BY id ASC
+                `);
 
-        res.status(500).json({
-            success: false,
-            message: "Ошибка получения товаров"
-        });
+            res.json(
+                result.rows
+            );
+
+        } catch (error) {
+
+            console.error(
+                "PRODUCTS ERROR:",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                message:
+                    "Ошибка получения товаров"
+            });
+        }
     }
-});
-
+); 
 /* =====================================================
    REGISTER
 ===================================================== */
 
-app.post("/api/register", async (req, res) => {
-    try {
-        const {
-            name,
-            email,
-            password
-        } = req.body;
+app.post(
+    "/api/register",
+    async (req, res) => {
 
-        if (!name || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "Заполни все поля"
-            });
-        }
+        try {
 
-        const cleanName =
-            String(name).trim();
-
-        const cleanEmail =
-            String(email)
-                .trim()
-                .toLowerCase();
-
-        const cleanPassword =
-            String(password);
-
-        if (cleanName.length < 2) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Имя должно содержать минимум 2 символа"
-            });
-        }
-
-        if (!cleanEmail.includes("@")) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Введите корректный email"
-            });
-        }
-
-        if (cleanPassword.length < 6) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Пароль должен содержать минимум 6 символов"
-            });
-        }
-
-        /*
-           Нельзя зарегистрировать второй аккаунт
-           с admin@urban.pl
-        */
-
-        if (isAdminEmail(cleanEmail)) {
-            return res.status(403).json({
-                success: false,
-                message:
-                    "Этот email зарезервирован для администратора"
-            });
-        }
-
-        const existing = await pool.query(
-            `
-            SELECT id
-            FROM users
-            WHERE LOWER(email) = LOWER($1)
-            LIMIT 1
-            `,
-            [cleanEmail]
-        );
-
-        if (existing.rows.length > 0) {
-            return res.status(409).json({
-                success: false,
-                message:
-                    "Пользователь с таким email уже существует"
-            });
-        }
-
-        const passwordHash =
-            hashPassword(cleanPassword);
-
-        const result = await pool.query(
-            `
-            INSERT INTO users
-            (
+            const {
                 name,
                 email,
-                password_hash
-            )
-            VALUES
-            (
-                $1,
-                $2,
-                $3
-            )
-            RETURNING
-                id,
-                name,
-                email,
-                created_at
-            `,
-            [
-                cleanName,
-                cleanEmail,
-                passwordHash
-            ]
-        );
+                password
+            } = req.body;
 
-        const user = result.rows[0];
+            if (
+                !name ||
+                !email ||
+                !password
+            ) {
 
-        const token =
-            createSession(user);
-
-        setSessionCookie(res, token);
-
-        res.status(201).json({
-            success: true,
-            message: "Регистрация успешна",
-            user: {
-                ...user,
-                isAdmin: false
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Заполни все поля"
+                });
             }
-        });
 
-    } catch (error) {
-        console.error(
-            "REGISTER ERROR:",
-            error
-        );
+            const cleanName =
+                String(name)
+                    .trim();
 
-        res.status(500).json({
-            success: false,
-            message: "Ошибка регистрации"
-        });
+            const cleanEmail =
+                String(email)
+                    .trim()
+                    .toLowerCase();
+
+            const cleanPassword =
+                String(password);
+
+            if (
+                cleanName.length < 2
+            ) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Имя должно содержать минимум 2 символа"
+                });
+            }
+
+            if (
+                !cleanEmail.includes("@")
+            ) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Введите корректный email"
+                });
+            }
+
+            if (
+                cleanPassword.length < 6
+            ) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Пароль должен содержать минимум 6 символов"
+                });
+            }
+
+            if (
+                isAdminEmail(
+                    cleanEmail
+                )
+            ) {
+
+                return res.status(403).json({
+                    success: false,
+                    message:
+                        "Этот email зарезервирован для администратора"
+                });
+            }
+
+            const existing =
+                await pool.query(
+                    `
+                    SELECT id
+                    FROM users
+                    WHERE LOWER(email) = LOWER($1)
+                    LIMIT 1
+                    `,
+                    [cleanEmail]
+                );
+
+            if (
+                existing.rows.length > 0
+            ) {
+
+                return res.status(409).json({
+                    success: false,
+                    message:
+                        "Пользователь с таким email уже существует"
+                });
+            }
+
+            const passwordHash =
+                hashPassword(
+                    cleanPassword
+                );
+
+            const result =
+                await pool.query(
+                    `
+                    INSERT INTO users
+                    (
+                        name,
+                        email,
+                        password_hash
+                    )
+                    VALUES
+                    (
+                        $1,
+                        $2,
+                        $3
+                    )
+                    RETURNING
+                        id,
+                        name,
+                        email,
+                        created_at
+                    `,
+                    [
+                        cleanName,
+                        cleanEmail,
+                        passwordHash
+                    ]
+                );
+
+            const user =
+                result.rows[0];
+
+            const token =
+                createSession(
+                    user
+                );
+
+            setSessionCookie(
+                res,
+                token
+            );
+
+            res.status(201).json({
+                success: true,
+                message:
+                    "Регистрация успешна",
+                user: {
+                    ...user,
+                    isAdmin: false
+                }
+            });
+
+        } catch (error) {
+
+            console.error(
+                "REGISTER ERROR:",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                message:
+                    "Ошибка регистрации"
+            });
+        }
     }
-});
+);
 
 /* =====================================================
    LOGIN
 ===================================================== */
 
-app.post("/api/login", async (req, res) => {
-    try {
-        const {
-            email,
-            password
-        } = req.body;
+app.post(
+    "/api/login",
+    async (req, res) => {
 
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "Заполни все поля"
-            });
-        }
+        try {
 
-        const cleanEmail =
-            String(email)
-                .trim()
-                .toLowerCase();
-
-        const result = await pool.query(
-            `
-            SELECT
-                id,
-                name,
+            const {
                 email,
-                password_hash,
-                created_at
-            FROM users
-            WHERE LOWER(email) = LOWER($1)
-            LIMIT 1
-            `,
-            [cleanEmail]
-        );
+                password
+            } = req.body;
 
-        if (result.rows.length === 0) {
-            return res.status(401).json({
-                success: false,
-                message:
-                    "Неверный email или пароль"
-            });
-        }
+            if (
+                !email ||
+                !password
+            ) {
 
-        const user = result.rows[0];
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Заполни все поля"
+                });
+            }
 
-        const correct =
-            verifyPassword(
-                String(password),
-                user.password_hash
+            const cleanEmail =
+                String(email)
+                    .trim()
+                    .toLowerCase();
+
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        id,
+                        name,
+                        email,
+                        password_hash,
+                        created_at
+                    FROM users
+                    WHERE LOWER(email) = LOWER($1)
+                    LIMIT 1
+                    `,
+                    [cleanEmail]
+                );
+
+            if (
+                result.rows.length === 0
+            ) {
+
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        "Неверный email или пароль"
+                });
+            }
+
+            const user =
+                result.rows[0];
+
+            const correct =
+                verifyPassword(
+                    String(password),
+                    user.password_hash
+                );
+
+            if (!correct) {
+
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        "Неверный email или пароль"
+                });
+            }
+
+            const token =
+                createSession(
+                    user
+                );
+
+            setSessionCookie(
+                res,
+                token
             );
 
-        if (!correct) {
-            return res.status(401).json({
+            const admin =
+                isAdminEmail(
+                    user.email
+                );
+
+            res.json({
+                success: true,
+
+                message:
+                    admin
+                        ? "Вход администратора выполнен"
+                        : "Вход выполнен",
+
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    isAdmin: admin,
+                    created_at:
+                        user.created_at
+                }
+            });
+
+        } catch (error) {
+
+            console.error(
+                "LOGIN ERROR:",
+                error
+            );
+
+            res.status(500).json({
                 success: false,
                 message:
-                    "Неверный email или пароль"
+                    "Ошибка входа"
             });
         }
-
-        const token =
-            createSession(user);
-
-        setSessionCookie(res, token);
-
-        const admin =
-            isAdminEmail(user.email);
-
-        res.json({
-            success: true,
-            message: admin
-                ? "Вход администратора выполнен"
-                : "Вход выполнен",
-
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                isAdmin: admin,
-                created_at: user.created_at
-            }
-        });
-
-    } catch (error) {
-        console.error(
-            "LOGIN ERROR:",
-            error
-        );
-
-        res.status(500).json({
-            success: false,
-            message: "Ошибка входа"
-        });
     }
-});
+);
 
 /* =====================================================
    CURRENT USER
 ===================================================== */
 
-app.get("/api/me", (req, res) => {
-    const user = getSession(req);
+app.get(
+    "/api/me",
+    (req, res) => {
 
-    if (!user) {
-        return res.json({
-            loggedIn: false,
-            user: null
+        const user =
+            getSession(req);
+
+        if (!user) {
+
+            return res.json({
+                loggedIn: false,
+                user: null
+            });
+        }
+
+        res.json({
+            loggedIn: true,
+
+            user: {
+                ...user,
+                isAdmin:
+                    isAdminEmail(
+                        user.email
+                    )
+            }
         });
     }
-
-    res.json({
-        loggedIn: true,
-
-        user: {
-            ...user,
-            isAdmin:
-                isAdminEmail(user.email)
-        }
-    });
-});
+);
 
 /* =====================================================
    LOGOUT
 ===================================================== */
 
-app.post("/api/logout", (req, res) => {
-    const cookieHeader =
-        req.headers.cookie || "";
+app.post(
+    "/api/logout",
+    (req, res) => {
 
-    const match =
-        cookieHeader.match(
-            /urban_session=([^;]+)/
+        const cookieHeader =
+            req.headers.cookie || "";
+
+        const match =
+            cookieHeader.match(
+                /urban_session=([^;]+)/
+            );
+
+        if (match) {
+            sessions.delete(
+                match[1]
+            );
+        }
+
+        clearSessionCookie(
+            res
         );
 
-    if (match) {
-        sessions.delete(match[1]);
+        res.json({
+            success: true,
+            message:
+                "Вы вышли из аккаунта"
+        });
     }
-
-    clearSessionCookie(res);
-
-    res.json({
-        success: true,
-        message: "Вы вышли из аккаунта"
-    });
-});
-
+);
 /* =====================================================
-   CART
+   CART - GET
 ===================================================== */
 
 app.get(
     "/api/cart",
     requireAuth,
     async (req, res) => {
+
         try {
+
             const result =
                 await pool.query(
                     `
@@ -603,6 +746,10 @@ app.get(
                         cart_items.id,
                         cart_items.product_id,
                         cart_items.quantity,
+                        COALESCE(
+                            cart_items.size,
+                            'S'
+                        ) AS size,
 
                         products.name,
                         products.description,
@@ -617,7 +764,8 @@ app.get(
                         ON products.id =
                            cart_items.product_id
 
-                    WHERE cart_items.user_id = $1
+                    WHERE cart_items.user_id =
+                        $1
 
                     ORDER BY cart_items.id ASC
                     `,
@@ -626,10 +774,12 @@ app.get(
 
             res.json({
                 success: true,
-                cart: result.rows
+                cart:
+                    result.rows
             });
 
         } catch (error) {
+
             console.error(
                 "GET CART ERROR:",
                 error
@@ -645,21 +795,37 @@ app.get(
 );
 
 /* =====================================================
-   ADD CART
+   CART - ADD
 ===================================================== */
 
 app.post(
     "/api/cart",
     requireAuth,
     async (req, res) => {
+
         try {
+
             const productId =
-                Number(req.body.productId);
+                Number(
+                    req.body.productId
+                );
 
             const quantity =
-                Number(req.body.quantity) || 1;
+                Number(
+                    req.body.quantity
+                ) || 1;
 
-            if (!Number.isInteger(productId)) {
+            const size =
+                String(
+                    req.body.size || "S"
+                ).trim();
+
+            if (
+                !Number.isInteger(
+                    productId
+                )
+            ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -668,9 +834,12 @@ app.post(
             }
 
             if (
-                !Number.isInteger(quantity) ||
+                !Number.isInteger(
+                    quantity
+                ) ||
                 quantity < 1
             ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -696,6 +865,7 @@ app.post(
             if (
                 productResult.rows.length === 0
             ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -707,9 +877,12 @@ app.post(
                 productResult.rows[0];
 
             const stock =
-                Number(product.stock) || 0;
+                Number(
+                    product.stock
+                ) || 0;
 
             if (stock <= 0) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -722,29 +895,37 @@ app.post(
                     `
                     SELECT
                         id,
-                        quantity
+                        quantity,
+                        size
                     FROM cart_items
                     WHERE user_id = $1
-                    AND product_id = $2
+                      AND product_id = $2
+                      AND COALESCE(size, 'S') = $3
                     LIMIT 1
                     `,
                     [
                         req.user.id,
-                        productId
+                        productId,
+                        size
                     ]
                 );
 
             if (
                 existingResult.rows.length > 0
             ) {
+
                 const item =
                     existingResult.rows[0];
 
                 const newQuantity =
-                    Number(item.quantity) +
-                    quantity;
+                    Number(
+                        item.quantity
+                    ) + quantity;
 
-                if (newQuantity > stock) {
+                if (
+                    newQuantity > stock
+                ) {
+
                     return res.status(400).json({
                         success: false,
                         message:
@@ -756,12 +937,15 @@ app.post(
                     await pool.query(
                         `
                         UPDATE cart_items
-                        SET quantity = $1
-                        WHERE id = $2
+                        SET
+                            quantity = $1,
+                            size = $2
+                        WHERE id = $3
                         RETURNING *
                         `,
                         [
                             newQuantity,
+                            size,
                             item.id
                         ]
                     );
@@ -773,7 +957,10 @@ app.post(
                 });
             }
 
-            if (quantity > stock) {
+            if (
+                quantity > stock
+            ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -788,20 +975,23 @@ app.post(
                     (
                         user_id,
                         product_id,
-                        quantity
+                        quantity,
+                        size
                     )
                     VALUES
                     (
                         $1,
                         $2,
-                        $3
+                        $3,
+                        $4
                     )
                     RETURNING *
                     `,
                     [
                         req.user.id,
                         productId,
-                        quantity
+                        quantity,
+                        size
                     ]
                 );
 
@@ -812,10 +1002,22 @@ app.post(
             });
 
         } catch (error) {
+
             console.error(
                 "ADD CART ERROR:",
                 error
             );
+
+            if (
+                error.code === "23505"
+            ) {
+
+                return res.status(409).json({
+                    success: false,
+                    message:
+                        "Этот товар уже есть в корзине"
+                });
+            }
 
             res.status(500).json({
                 success: false,
@@ -827,21 +1029,37 @@ app.post(
 );
 
 /* =====================================================
-   UPDATE CART
+   CART - UPDATE
 ===================================================== */
 
 app.put(
     "/api/cart/:productId",
     requireAuth,
     async (req, res) => {
+
         try {
+
             const productId =
-                Number(req.params.productId);
+                Number(
+                    req.params.productId
+                );
 
             const quantity =
-                Number(req.body.quantity);
+                Number(
+                    req.body.quantity
+                );
 
-            if (!Number.isInteger(productId)) {
+            const size =
+                String(
+                    req.body.size || "S"
+                ).trim();
+
+            if (
+                !Number.isInteger(
+                    productId
+                )
+            ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -850,14 +1068,17 @@ app.put(
             }
 
             if (
-                !Number.isInteger(quantity) ||
+                !Number.isInteger(
+                    quantity
+                ) ||
                 quantity < 1
             ) {
+
                 await pool.query(
                     `
                     DELETE FROM cart_items
                     WHERE user_id = $1
-                    AND product_id = $2
+                      AND product_id = $2
                     `,
                     [
                         req.user.id,
@@ -884,6 +1105,7 @@ app.put(
             if (
                 productResult.rows.length === 0
             ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -893,10 +1115,14 @@ app.put(
 
             const stock =
                 Number(
-                    productResult.rows[0].stock
-                );
+                    productResult.rows[0]
+                        .stock
+                ) || 0;
 
-            if (quantity > stock) {
+            if (
+                quantity > stock
+            ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -908,19 +1134,25 @@ app.put(
                 await pool.query(
                     `
                     UPDATE cart_items
-                    SET quantity = $1
-                    WHERE user_id = $2
-                    AND product_id = $3
+                    SET
+                        quantity = $1,
+                        size = $2
+                    WHERE user_id = $3
+                      AND product_id = $4
                     RETURNING *
                     `,
                     [
                         quantity,
+                        size,
                         req.user.id,
                         productId
                     ]
                 );
 
-            if (result.rows.length === 0) {
+            if (
+                result.rows.length === 0
+            ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -935,6 +1167,7 @@ app.put(
             });
 
         } catch (error) {
+
             console.error(
                 "UPDATE CART ERROR:",
                 error
@@ -950,18 +1183,27 @@ app.put(
 );
 
 /* =====================================================
-   DELETE CART ITEM
+   CART - DELETE ITEM
 ===================================================== */
 
 app.delete(
     "/api/cart/:productId",
     requireAuth,
     async (req, res) => {
-        try {
-            const productId =
-                Number(req.params.productId);
 
-            if (!Number.isInteger(productId)) {
+        try {
+
+            const productId =
+                Number(
+                    req.params.productId
+                );
+
+            if (
+                !Number.isInteger(
+                    productId
+                )
+            ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -973,7 +1215,7 @@ app.delete(
                 `
                 DELETE FROM cart_items
                 WHERE user_id = $1
-                AND product_id = $2
+                  AND product_id = $2
                 `,
                 [
                     req.user.id,
@@ -986,6 +1228,7 @@ app.delete(
             });
 
         } catch (error) {
+
             console.error(
                 "DELETE CART ERROR:",
                 error
@@ -1001,14 +1244,16 @@ app.delete(
 );
 
 /* =====================================================
-   CLEAR CART
+   CART - CLEAR
 ===================================================== */
 
 app.delete(
     "/api/cart",
     requireAuth,
     async (req, res) => {
+
         try {
+
             await pool.query(
                 `
                 DELETE FROM cart_items
@@ -1024,6 +1269,7 @@ app.delete(
             });
 
         } catch (error) {
+
             console.error(
                 "CLEAR CART ERROR:",
                 error
@@ -1037,7 +1283,6 @@ app.delete(
         }
     }
 );
-
 /* =====================================================
    ADMIN CHECK
 ===================================================== */
@@ -1046,6 +1291,7 @@ app.get(
     "/api/admin/check",
     requireAdmin,
     (req, res) => {
+
         res.json({
             success: true,
             admin: true,
@@ -1062,10 +1308,11 @@ app.get(
     "/api/admin/products",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const result =
-                await pool.query(
-                    `
+                await pool.query(`
                     SELECT
                         id,
                         name,
@@ -1077,8 +1324,7 @@ app.get(
                         category
                     FROM products
                     ORDER BY id DESC
-                    `
-                );
+                `);
 
             res.json({
                 success: true,
@@ -1087,6 +1333,7 @@ app.get(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN PRODUCTS ERROR:",
                 error
@@ -1101,15 +1348,13 @@ app.get(
     }
 );
 
-/* =====================================================
-   ADMIN CREATE PRODUCT
-===================================================== */
-
 app.post(
     "/api/admin/products",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const {
                 name,
                 description,
@@ -1120,7 +1365,9 @@ app.post(
             } = req.body;
 
             const cleanName =
-                String(name || "").trim();
+                String(
+                    name || ""
+                ).trim();
 
             const cleanDescription =
                 String(
@@ -1144,6 +1391,7 @@ app.post(
                 Number(stock);
 
             if (!cleanName) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -1152,9 +1400,12 @@ app.post(
             }
 
             if (
-                !Number.isFinite(cleanPrice) ||
+                !Number.isFinite(
+                    cleanPrice
+                ) ||
                 cleanPrice < 0
             ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -1163,9 +1414,12 @@ app.post(
             }
 
             if (
-                !Number.isInteger(cleanStock) ||
+                !Number.isInteger(
+                    cleanStock
+                ) ||
                 cleanStock < 0
             ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -1213,6 +1467,7 @@ app.post(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN CREATE PRODUCT ERROR:",
                 error
@@ -1227,25 +1482,17 @@ app.post(
     }
 );
 
-/* =====================================================
-   ADMIN UPDATE PRODUCT
-===================================================== */
-
 app.put(
     "/api/admin/products/:id",
     requireAdmin,
     async (req, res) => {
-        try {
-            const productId =
-                Number(req.params.id);
 
-            if (!Number.isInteger(productId)) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Неверный ID товара"
-                });
-            }
+        try {
+
+            const productId =
+                Number(
+                    req.params.id
+                );
 
             const {
                 name,
@@ -1256,57 +1503,16 @@ app.put(
                 category
             } = req.body;
 
-            const cleanName =
-                String(name || "").trim();
-
-            const cleanDescription =
-                String(
-                    description || ""
-                ).trim();
-
-            const cleanImage =
-                String(
-                    image || ""
-                ).trim();
-
-            const cleanCategory =
-                String(
-                    category || ""
-                ).trim();
-
-            const cleanPrice =
-                Number(price);
-
-            const cleanStock =
-                Number(stock);
-
-            if (!cleanName) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Введите название товара"
-                });
-            }
-
             if (
-                !Number.isFinite(cleanPrice) ||
-                cleanPrice < 0
+                !Number.isInteger(
+                    productId
+                )
             ) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Введите правильную цену"
-                });
-            }
 
-            if (
-                !Number.isInteger(cleanStock) ||
-                cleanStock < 0
-            ) {
                 return res.status(400).json({
                     success: false,
                     message:
-                        "Введите правильное количество"
+                        "Неверный ID товара"
                 });
             }
 
@@ -1325,17 +1531,34 @@ app.put(
                     RETURNING *
                     `,
                     [
-                        cleanName,
-                        cleanDescription,
-                        cleanPrice,
-                        cleanImage,
-                        cleanStock,
-                        cleanCategory,
+                        String(
+                            name || ""
+                        ).trim(),
+
+                        String(
+                            description || ""
+                        ).trim(),
+
+                        Number(price),
+
+                        String(
+                            image || ""
+                        ).trim(),
+
+                        Number(stock),
+
+                        String(
+                            category || ""
+                        ).trim(),
+
                         productId
                     ]
                 );
 
-            if (result.rows.length === 0) {
+            if (
+                result.rows.length === 0
+            ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -1350,6 +1573,7 @@ app.put(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN UPDATE PRODUCT ERROR:",
                 error
@@ -1364,19 +1588,24 @@ app.put(
     }
 );
 
-/* =====================================================
-   ADMIN DELETE PRODUCT
-===================================================== */
-
 app.delete(
     "/api/admin/products/:id",
     requireAdmin,
     async (req, res) => {
-        try {
-            const productId =
-                Number(req.params.id);
 
-            if (!Number.isInteger(productId)) {
+        try {
+
+            const productId =
+                Number(
+                    req.params.id
+                );
+
+            if (
+                !Number.isInteger(
+                    productId
+                )
+            ) {
+
                 return res.status(400).json({
                     success: false,
                     message:
@@ -1402,7 +1631,10 @@ app.delete(
                     [productId]
                 );
 
-            if (result.rows.length === 0) {
+            if (
+                result.rows.length === 0
+            ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -1419,6 +1651,7 @@ app.delete(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN DELETE PRODUCT ERROR:",
                 error
@@ -1441,10 +1674,11 @@ app.get(
     "/api/admin/users",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const result =
-                await pool.query(
-                    `
+                await pool.query(`
                     SELECT
                         id,
                         name,
@@ -1452,8 +1686,7 @@ app.get(
                         created_at
                     FROM users
                     ORDER BY id DESC
-                    `
-                );
+                `);
 
             res.json({
                 success: true,
@@ -1462,6 +1695,7 @@ app.get(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN USERS ERROR:",
                 error
@@ -1484,21 +1718,32 @@ app.get(
     "/api/admin/cart",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const result =
-                await pool.query(
-                    `
+                await pool.query(`
                     SELECT
                         cart_items.id,
                         cart_items.user_id,
                         cart_items.product_id,
                         cart_items.quantity,
+                        COALESCE(
+                            cart_items.size,
+                            'S'
+                        ) AS size,
 
-                        users.name AS user_name,
-                        users.email AS user_email,
+                        users.name
+                            AS user_name,
 
-                        products.name AS product_name,
-                        products.price AS product_price
+                        users.email
+                            AS user_email,
+
+                        products.name
+                            AS product_name,
+
+                        products.price
+                            AS product_price
 
                     FROM cart_items
 
@@ -1510,9 +1755,9 @@ app.get(
                         ON products.id =
                            cart_items.product_id
 
-                    ORDER BY cart_items.id DESC
-                    `
-                );
+                    ORDER BY
+                        cart_items.id DESC
+                `);
 
             res.json({
                 success: true,
@@ -1521,6 +1766,7 @@ app.get(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN CART ERROR:",
                 error
@@ -1543,31 +1789,18 @@ app.patch(
     "/api/admin/products/:id/stock",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const productId =
-                Number(req.params.id);
+                Number(
+                    req.params.id
+                );
 
             const stock =
-                Number(req.body.stock);
-
-            if (!Number.isInteger(productId)) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Неверный ID товара"
-                });
-            }
-
-            if (
-                !Number.isInteger(stock) ||
-                stock < 0
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Неверное количество"
-                });
-            }
+                Number(
+                    req.body.stock
+                );
 
             const result =
                 await pool.query(
@@ -1583,7 +1816,10 @@ app.patch(
                     ]
                 );
 
-            if (result.rows.length === 0) {
+            if (
+                result.rows.length === 0
+            ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -1598,6 +1834,7 @@ app.patch(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN STOCK ERROR:",
                 error
@@ -1620,31 +1857,18 @@ app.patch(
     "/api/admin/products/:id/price",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const productId =
-                Number(req.params.id);
+                Number(
+                    req.params.id
+                );
 
             const price =
-                Number(req.body.price);
-
-            if (!Number.isInteger(productId)) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Неверный ID товара"
-                });
-            }
-
-            if (
-                !Number.isFinite(price) ||
-                price < 0
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Неверная цена"
-                });
-            }
+                Number(
+                    req.body.price
+                );
 
             const result =
                 await pool.query(
@@ -1660,7 +1884,10 @@ app.patch(
                     ]
                 );
 
-            if (result.rows.length === 0) {
+            if (
+                result.rows.length === 0
+            ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -1675,6 +1902,7 @@ app.patch(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN PRICE ERROR:",
                 error
@@ -1688,7 +1916,6 @@ app.patch(
         }
     }
 );
-
 /* =====================================================
    ADMIN STATS
 ===================================================== */
@@ -1697,11 +1924,14 @@ app.get(
     "/api/admin/stats",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const productsResult =
                 await pool.query(
                     `
-                    SELECT COUNT(*)::int AS count
+                    SELECT
+                        COUNT(*)::int AS count
                     FROM products
                     `
                 );
@@ -1709,7 +1939,8 @@ app.get(
             const usersResult =
                 await pool.query(
                     `
-                    SELECT COUNT(*)::int AS count
+                    SELECT
+                        COUNT(*)::int AS count
                     FROM users
                     `
                 );
@@ -1743,20 +1974,29 @@ app.get(
 
                 stats: {
                     products:
-                        productsResult.rows[0].count,
+                        productsResult
+                            .rows[0]
+                            .count,
 
                     users:
-                        usersResult.rows[0].count,
+                        usersResult
+                            .rows[0]
+                            .count,
 
                     cartItems:
-                        cartResult.rows[0].count,
+                        cartResult
+                            .rows[0]
+                            .count,
 
                     totalStock:
-                        stockResult.rows[0].count
+                        stockResult
+                            .rows[0]
+                            .count
                 }
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN STATS ERROR:",
                 error
@@ -1779,7 +2019,9 @@ app.get(
     "/api/admin/profile",
     requireAdmin,
     async (req, res) => {
+
         try {
+
             const result =
                 await pool.query(
                     `
@@ -1795,7 +2037,10 @@ app.get(
                     [req.user.id]
                 );
 
-            if (result.rows.length === 0) {
+            if (
+                result.rows.length === 0
+            ) {
+
                 return res.status(404).json({
                     success: false,
                     message:
@@ -1810,6 +2055,7 @@ app.get(
             });
 
         } catch (error) {
+
             console.error(
                 "ADMIN PROFILE ERROR:",
                 error
@@ -1831,8 +2077,12 @@ app.get(
 app.get(
     "/api/health",
     async (req, res) => {
+
         try {
-            await pool.query("SELECT 1");
+
+            await pool.query(
+                "SELECT 1"
+            );
 
             res.json({
                 success: true,
@@ -1841,11 +2091,342 @@ app.get(
             });
 
         } catch (error) {
+
             res.status(500).json({
                 success: false,
                 server: "online",
                 database: "offline"
             });
+        }
+    }
+);
+
+/* =====================================================
+   CREATE ORDER
+===================================================== */
+
+app.post(
+    "/api/orders",
+    requireAuth,
+    async (req, res) => {
+
+        const client =
+            await pool.connect();
+
+        try {
+
+            const {
+                customerName,
+                phone,
+                email,
+                deliveryMethod,
+                deliveryAddress,
+                paymentMethod,
+                items
+            } = req.body;
+
+            if (
+                !customerName ||
+                !phone ||
+                !email ||
+                !deliveryMethod ||
+                !deliveryAddress ||
+                !paymentMethod
+            ) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Заполните все поля"
+                });
+            }
+
+            if (
+                !Array.isArray(items) ||
+                items.length === 0
+            ) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Корзина пуста"
+                });
+            }
+
+            await client.query(
+                "BEGIN"
+            );
+
+            let total = 0;
+
+            const checkedItems = [];
+
+            for (
+                const item of items
+            ) {
+
+                const productId =
+                    Number(
+                        item.id ??
+                        item.product_id
+                    );
+
+                const quantity =
+                    Number(
+                        item.quantity
+                    );
+
+                const size =
+                    String(
+                        item.size || "S"
+                    ).trim();
+
+                if (
+                    !Number.isInteger(
+                        productId
+                    ) ||
+                    !Number.isInteger(
+                        quantity
+                    ) ||
+                    quantity < 1
+                ) {
+
+                    throw new Error(
+                        "Неверные данные товара"
+                    );
+                }
+
+                const productResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            name,
+                            price,
+                            stock
+                        FROM products
+                        WHERE id = $1
+                        LIMIT 1
+                        `,
+                        [productId]
+                    );
+
+                if (
+                    productResult
+                        .rows
+                        .length === 0
+                ) {
+
+                    throw new Error(
+                        `Товар ${productId} не найден`
+                    );
+                }
+
+                const product =
+                    productResult
+                        .rows[0];
+
+                const price =
+                    Number(
+                        product.price
+                    ) || 0;
+
+                const stock =
+                    Number(
+                        product.stock
+                    ) || 0;
+
+                if (
+                    quantity > stock
+                ) {
+
+                    throw new Error(
+                        `Недостаточно товара: ${product.name}. В наличии ${stock} шт.`
+                    );
+                }
+
+                total +=
+                    price *
+                    quantity;
+
+                checkedItems.push({
+                    productId,
+                    productName:
+                        product.name,
+                    size,
+                    price,
+                    quantity
+                });
+            }
+
+            const orderResult =
+                await client.query(
+                    `
+                    INSERT INTO orders
+                    (
+                        user_id,
+                        customer_name,
+                        phone,
+                        email,
+                        delivery_method,
+                        delivery_address,
+                        payment_method,
+                        total,
+                        status
+                    )
+                    VALUES
+                    (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8,
+                        $9
+                    )
+                    RETURNING *
+                    `,
+                    [
+                        req.user.id,
+                        String(
+                            customerName
+                        ).trim(),
+                        String(
+                            phone
+                        ).trim(),
+                        String(
+                            email
+                        ).trim(),
+                        String(
+                            deliveryMethod
+                        ),
+                        String(
+                            deliveryAddress
+                        ).trim(),
+                        String(
+                            paymentMethod
+                        ),
+                        total,
+                        "new"
+                    ]
+                );
+
+            const order =
+                orderResult.rows[0];
+
+            for (
+                const item of checkedItems
+            ) {
+
+                await client.query(
+                    `
+                    INSERT INTO order_items
+                    (
+                        order_id,
+                        product_id,
+                        product_name,
+                        size,
+                        price,
+                        quantity
+                    )
+                    VALUES
+                    (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6
+                    )
+                    `,
+                    [
+                        order.id,
+                        item.productId,
+                        item.productName,
+                        item.size,
+                        item.price,
+                        item.quantity
+                    ]
+                );
+
+                const stockUpdate =
+                    await client.query(
+                        `
+                        UPDATE products
+                        SET stock =
+                            stock - $1
+                        WHERE id = $2
+                          AND stock >= $1
+                        RETURNING id
+                        `,
+                        [
+                            item.quantity,
+                            item.productId
+                        ]
+                    );
+
+                if (
+                    stockUpdate
+                        .rows
+                        .length === 0
+                ) {
+
+                    throw new Error(
+                        `Не удалось уменьшить остаток товара: ${item.productName}`
+                    );
+                }
+            }
+
+            await client.query(
+                `
+                DELETE FROM cart_items
+                WHERE user_id = $1
+                `,
+                [req.user.id]
+            );
+
+            await client.query(
+                "COMMIT"
+            );
+
+            res.json({
+                success: true,
+                order
+            });
+
+        } catch (error) {
+
+            try {
+                await client.query(
+                    "ROLLBACK"
+                );
+            } catch (
+                rollbackError
+            ) {
+
+                console.error(
+                    "ROLLBACK ERROR:",
+                    rollbackError
+                );
+            }
+
+            console.error(
+                "CREATE ORDER ERROR:",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                message:
+                    error.message ||
+                    "Ошибка создания заказа"
+            });
+
+        } finally {
+
+            client.release();
         }
     }
 );
@@ -1857,6 +2438,7 @@ app.get(
 app.use(
     "/api",
     (req, res) => {
+
         res.status(404).json({
             success: false,
             message:
@@ -1871,13 +2453,18 @@ app.use(
 
 app.use(
     (error, req, res, next) => {
+
         console.error(
             "SERVER ERROR:",
             error
         );
 
-        if (res.headersSent) {
-            return next(error);
+        if (
+            res.headersSent
+        ) {
+            return next(
+                error
+            );
         }
 
         res.status(500).json({
@@ -1893,22 +2480,29 @@ app.use(
 ===================================================== */
 
 async function ensureAdminAccount() {
+
     try {
+
         const result =
             await pool.query(
                 `
                 SELECT id
                 FROM users
-                WHERE LOWER(email) = LOWER($1)
+                WHERE LOWER(email) =
+                      LOWER($1)
                 LIMIT 1
                 `,
                 [ADMIN_EMAIL]
             );
 
         const passwordHash =
-            hashPassword(ADMIN_PASSWORD);
+            hashPassword(
+                ADMIN_PASSWORD
+            );
 
-        if (result.rows.length === 0) {
+        if (
+            result.rows.length === 0
+        ) {
 
             await pool.query(
                 `
@@ -1943,7 +2537,8 @@ async function ensureAdminAccount() {
                 `
                 UPDATE users
                 SET password_hash = $1
-                WHERE LOWER(email) = LOWER($2)
+                WHERE LOWER(email) =
+                      LOWER($2)
                 `,
                 [
                     passwordHash,
@@ -1958,6 +2553,7 @@ async function ensureAdminAccount() {
         }
 
     } catch (error) {
+
         console.error(
             "ADMIN ACCOUNT ERROR:",
             error
@@ -1970,31 +2566,39 @@ async function ensureAdminAccount() {
 ===================================================== */
 
 async function startServer() {
+
     try {
 
-        await pool.query("SELECT 1");
+        await pool.query(
+            "SELECT 1"
+        );
 
         console.log(
             "PostgreSQL connection OK"
         );
 
         await ensureAdminAccount();
-// =====================================================
-// SITEMAP
-// =====================================================
 
-app.get("/sitemap.xml", (req, res) => {
-    res.type("application/xml");
+        app.get(
+            "/sitemap.xml",
+            (req, res) => {
 
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+                res.type(
+                    "application/xml"
+                );
+
+                res.send(
+`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
         <loc>https://urban-store-2026.onrender.com/</loc>
     </url>
-</urlset>`);
-});
+</urlset>`
+                );
+            }
+        );
+
         app.listen(
-        
             PORT,
             "0.0.0.0",
             () => {
@@ -2008,12 +2612,12 @@ app.get("/sitemap.xml", (req, res) => {
                 );
 
                 console.log(
-                    "PostgreSQL + Users + Cart"
-                
+                    "PostgreSQL + Users + Cart + Orders"
                 );
 
                 console.log(
-                    "ADMIN: " + ADMIN_EMAIL
+                    "ADMIN: " +
+                    ADMIN_EMAIL
                 );
 
                 console.log(
@@ -2032,8 +2636,6 @@ app.get("/sitemap.xml", (req, res) => {
         process.exit(1);
     }
 }
-
-startServer();
 
 /* =====================================================
    SHUTDOWN
@@ -2099,6 +2701,8 @@ process.on(
         );
     }
 );
+
+startServer();
 
 console.log(
     "URBAN STORE server file loaded."
