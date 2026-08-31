@@ -323,17 +323,20 @@ app.get(
 
             const result =
                 await pool.query(`
-                    SELECT
-                        id,
-                        name,
-                        description,
-                        price,
-                        image,
-                        stock,
-                        created_at,
-                        category
-                    FROM products
-                    ORDER BY id ASC
+                   SELECT
+    id,
+    name,
+    description,
+    price,
+    image,
+    stock,
+    created_at,
+    category,
+    gender,
+    is_new,
+    is_sale
+FROM products
+ORDER BY id ASC
                 `);
 
             res.json(

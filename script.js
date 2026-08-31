@@ -2829,3 +2829,438 @@ document.addEventListener(
         }
     }
 );
+/* =====================================================
+   MAIN NAVIGATION FILTERS
+   ===================================================== */
+
+document.addEventListener("click", (event) => {
+
+    const target =
+        event.target instanceof Element
+            ? event.target
+            : null;
+
+    if (!target) {
+        return;
+    }
+
+    const navLink =
+        target.closest(".main-nav a");
+
+    if (!navLink) {
+        return;
+    }
+
+    const href =
+        navLink.getAttribute("href");
+
+    if (!href) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const section =
+        href.replace("#", "")
+            .trim()
+            .toLowerCase();
+
+    console.log(
+        "MAIN NAV:",
+        section
+    );
+
+    /* =========================
+       КАТАЛОГ
+    ========================= */
+
+    if (section === "catalog") {
+
+        renderProducts(
+            databaseProducts
+        );
+
+        document
+            .getElementById("catalog")
+            ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+        return;
+    }
+
+    /* =========================
+       МУЖСКОЕ
+    ========================= */
+
+    if (section === "men") {
+
+        const filtered =
+            databaseProducts.filter(
+                product => {
+
+                    const gender =
+                        String(
+                            product.gender || ""
+                        )
+                            .trim()
+                            .toLowerCase();
+
+                    return (
+                        gender === "male" ||
+                        gender === "men" ||
+                        gender === "мужское"
+                    );
+                }
+            );
+
+        console.log(
+            "MAIN NAV — Мужское:",
+            filtered.length
+        );
+
+        renderProducts(filtered);
+
+        document
+            .getElementById("catalog")
+            ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+        return;
+    }
+
+    /* =========================
+       ЖЕНСКОЕ
+    ========================= */
+
+    if (section === "women") {
+
+        const filtered =
+            databaseProducts.filter(
+                product => {
+
+                    const gender =
+                        String(
+                            product.gender || ""
+                        )
+                            .trim()
+                            .toLowerCase();
+
+                    return (
+                        gender === "female" ||
+                        gender === "women" ||
+                        gender === "женское"
+                    );
+                }
+            );
+
+        console.log(
+            "MAIN NAV — Женское:",
+            filtered.length
+        );
+
+        renderProducts(filtered);
+
+        document
+            .getElementById("catalog")
+            ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+        return;
+    }
+
+    /* =========================
+       НОВИНКИ
+    ========================= */
+
+    if (section === "new") {
+
+        const filtered =
+            databaseProducts.filter(
+                product =>
+                    product.is_new === true ||
+                    product.is_new === "true" ||
+                    product.is_new === 1
+            );
+
+        console.log(
+            "MAIN NAV — Новинки:",
+            filtered.length
+        );
+
+        renderProducts(filtered);
+
+        document
+            .getElementById("catalog")
+            ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+        return;
+    }
+
+    /* =========================
+       SALE
+    ========================= */
+
+    if (section === "sale") {
+
+        const filtered =
+            databaseProducts.filter(
+                product =>
+                    product.is_sale === true ||
+                    product.is_sale === "true" ||
+                    product.is_sale === 1
+            );
+
+        console.log(
+            "MAIN NAV — Sale:",
+            filtered.length
+        );
+
+        renderProducts(filtered);
+
+        document
+            .getElementById("catalog")
+            ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+        return;
+    }
+
+});
+/* =====================================================
+   ACCOUNT REGISTRATION FIX
+===================================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const showRegister =
+        document.getElementById("show-register");
+
+    const showLogin =
+        document.getElementById("show-login");
+
+    const loginView =
+        document.getElementById("login-view");
+
+    const registerView =
+        document.getElementById("register-view");
+
+    const registerForm =
+        document.getElementById("register-form");
+
+    const registerMessage =
+        document.getElementById("register-message");
+
+    if (!showRegister || !registerView) {
+        console.error(
+            "REGISTER: элементы регистрации не найдены"
+        );
+        return;
+    }
+
+    /* ==========================================
+       ОТКРЫТЬ РЕГИСТРАЦИЮ
+    ========================================== */
+
+    showRegister.addEventListener(
+        "click",
+        (event) => {
+
+            event.preventDefault();
+
+            if (loginView) {
+                loginView.classList.remove("active");
+            }
+
+            registerView.classList.add("active");
+
+            if (registerMessage) {
+                registerMessage.textContent = "";
+            }
+        }
+    );
+
+    /* ==========================================
+       НАЗАД КО ВХОДУ
+    ========================================== */
+
+    if (showLogin) {
+
+        showLogin.addEventListener(
+            "click",
+            (event) => {
+
+                event.preventDefault();
+
+                registerView.classList.remove(
+                    "active"
+                );
+
+                if (loginView) {
+                    loginView.classList.add(
+                        "active"
+                    );
+                }
+            }
+        );
+    }
+
+    /* ==========================================
+       РЕГИСТРАЦИЯ
+    ========================================== */
+
+    if (registerForm) {
+
+        registerForm.addEventListener(
+            "submit",
+            async (event) => {
+
+                event.preventDefault();
+
+                const nameInput =
+                    document.getElementById(
+                        "register-name"
+                    );
+
+                const emailInput =
+                    document.getElementById(
+                        "register-email"
+                    );
+
+                const passwordInput =
+                    document.getElementById(
+                        "register-password"
+                    );
+
+                const name =
+                    nameInput
+                        ? nameInput.value.trim()
+                        : "";
+
+                const email =
+                    emailInput
+                        ? emailInput.value.trim()
+                        : "";
+
+                const password =
+                    passwordInput
+                        ? passwordInput.value
+                        : "";
+
+                if (registerMessage) {
+                    registerMessage.textContent =
+                        "";
+                }
+
+                if (
+                    !name ||
+                    !email ||
+                    !password
+                ) {
+                    if (registerMessage) {
+                        registerMessage.textContent =
+                            "Заполните все поля";
+                    }
+
+                    return;
+                }
+
+                if (password.length < 6) {
+                    if (registerMessage) {
+                        registerMessage.textContent =
+                            "Пароль должен содержать минимум 6 символов";
+                    }
+
+                    return;
+                }
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/api/register",
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                credentials: "include",
+
+                                body: JSON.stringify({
+                                    name,
+                                    email,
+                                    password
+                                })
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (!response.ok) {
+
+                        if (registerMessage) {
+                            registerMessage.textContent =
+                                data.message ||
+                                "Ошибка регистрации";
+                        }
+
+                        return;
+                    }
+
+                    if (registerMessage) {
+                        registerMessage.textContent =
+                            "Регистрация успешна!";
+                    }
+
+                    registerForm.reset();
+
+                    setTimeout(() => {
+
+                        registerView.classList.remove(
+                            "active"
+                        );
+
+                        if (loginView) {
+                            loginView.classList.add(
+                                "active"
+                            );
+                        }
+
+                    }, 800);
+
+                    console.log(
+                        "REGISTER SUCCESS:",
+                        data.user
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "REGISTER ERROR:",
+                        error
+                    );
+
+                    if (registerMessage) {
+                        registerMessage.textContent =
+                            "Ошибка соединения с сервером";
+                    }
+                }
+            }
+        );
+    }
+
+});
