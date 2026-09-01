@@ -2260,8 +2260,8 @@ document.addEventListener("click", async (event) => {
 
         cart = [];
 
-        localStorage.removeItem("urban_cart");
 
+        
         renderCart();
 
         if (userView) {
