@@ -2579,7 +2579,10 @@ async function startServer() {
         console.log(
             "PostgreSQL connection OK"
         );
-
+await pool.query(`
+    ALTER TABLE cart_items
+    ADD COLUMN IF NOT EXISTS size TEXT DEFAULT 'S';
+`);
         await ensureAdminAccount();
 
         app.get(

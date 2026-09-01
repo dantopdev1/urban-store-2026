@@ -461,7 +461,13 @@ async function loadCart() {
             Array.isArray(data.cart)
                 ? data.cart
                 : [];
+const localCart = loadLocalCart();
 
+if (serverCart.length === 0 && localCart.length > 0) {
+    cart = localCart;
+    renderCart();
+    return;
+}
 
         cart =
             serverCart.map(item => ({
@@ -2266,7 +2272,7 @@ console.log("LOGOUT: успешно");
 
 cart = [];
 renderCart();
-clearLocalCart();
+
        
         if (userView) {
             userView.classList.remove("active");
