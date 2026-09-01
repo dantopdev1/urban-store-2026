@@ -5,7 +5,78 @@
 
 let cart = [];
 let databaseProducts = [];
+/* =====================================================
+   LOAD CART FROM SERVER
+===================================================== */
 
+async function loadCart() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/cart",
+                {
+                    method: "GET",
+                    credentials: "include"
+                }
+            );
+
+        // Пользователь не авторизован.
+        // Ничего не ломаем и ничего не перезаписываем.
+        if (response.status === 401) {
+            return;
+        }
+
+        if (!response.ok) {
+            console.warn(
+                "Не удалось загрузить корзину:",
+                response.status
+            );
+
+            return;
+        }
+
+        const data =
+            await response.json();
+
+        if (
+            !data ||
+            !Array.isArray(data.cart)
+        ) {
+            return;
+        }
+
+        cart =
+            data.cart.map(item => ({
+                id: item.product_id,
+                name: item.name,
+                price: Number(item.price) || 0,
+
+                // Если сервер возвращает размер —
+                // сохраняем его. Иначе S.
+                size: item.size || "S",
+
+                quantity:
+                    Number(item.quantity) || 1
+            }));
+
+        renderCart();
+
+        console.log(
+            "Корзина загружена:",
+            cart.length,
+            "позиций"
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Ошибка загрузки корзины:",
+            error
+        );
+    }
+}
 let currentQuickViewProduct = null;
 let currentQuickViewImages = [];
 let currentQuickViewImageIndex = 0;
@@ -1928,13 +1999,17 @@ document.addEventListener(
 
 document.addEventListener(
     "DOMContentLoaded",
-    () => {
+    async () => {
 
         setupFilters();
 
         renderCart();
 
         loadProducts();
+
+        // Восстанавливаем корзину
+        // текущего пользователя из PostgreSQL.
+        await loadCart();
 
         console.log(
             "URBAN STORE запущен ✓"
