@@ -411,7 +411,20 @@ function renderCart() {
 async function loadCart() {
 
     try {
+    const meResponse = await fetch(
+        "/api/me",
+        {
+            credentials: "include"
+        }
+    );
 
+    const meData = await meResponse.json();
+
+    if (!meResponse.ok || !meData.loggedIn) {
+        cart = [];
+        renderCart();
+        return;
+    }
         const response =
             await fetch(
                 "/api/cart",
@@ -448,13 +461,8 @@ async function loadCart() {
             Array.isArray(data.cart)
                 ? data.cart
                 : [];
-const localCart = loadLocalCart();
 
-if (serverCart.length === 0 && localCart.length > 0) {
-    cart = localCart;
-    renderCart();
-    return;
-}
+
         cart =
             serverCart.map(item => ({
                 id:
@@ -1992,11 +2000,10 @@ document.addEventListener(
     () => {
 
         setupFilters();
-const localCart = loadLocalCart();
 
-if (localCart.length) {
-    cart = localCart;
-}
+
+
+
         renderCart();
 
       
@@ -2255,9 +2262,11 @@ document.addEventListener("click", async (event) => {
 
             return;
         }
+console.log("LOGOUT: успешно");
 
-        console.log("LOGOUT: успешно");
-
+cart = [];
+renderCart();
+clearLocalCart();
        
         if (userView) {
             userView.classList.remove("active");
