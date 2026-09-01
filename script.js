@@ -2258,12 +2258,7 @@ document.addEventListener("click", async (event) => {
 
         console.log("LOGOUT: успешно");
 
-        cart = [];
-
-
-        
-        renderCart();
-
+       
         if (userView) {
             userView.classList.remove("active");
         }
