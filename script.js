@@ -5,78 +5,7 @@
 
 let cart = [];
 let databaseProducts = [];
-/* =====================================================
-   LOAD CART FROM SERVER
-===================================================== */
 
-async function loadCart() {
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/cart",
-                {
-                    method: "GET",
-                    credentials: "include"
-                }
-            );
-
-        // Пользователь не авторизован.
-        // Ничего не ломаем и ничего не перезаписываем.
-        if (response.status === 401) {
-            return;
-        }
-
-        if (!response.ok) {
-            console.warn(
-                "Не удалось загрузить корзину:",
-                response.status
-            );
-
-            return;
-        }
-
-        const data =
-            await response.json();
-
-        if (
-            !data ||
-            !Array.isArray(data.cart)
-        ) {
-            return;
-        }
-
-        cart =
-            data.cart.map(item => ({
-                id: item.product_id,
-                name: item.name,
-                price: Number(item.price) || 0,
-
-                // Если сервер возвращает размер —
-                // сохраняем его. Иначе S.
-                size: item.size || "S",
-
-                quantity:
-                    Number(item.quantity) || 1
-            }));
-
-        renderCart();
-
-        console.log(
-            "Корзина загружена:",
-            cart.length,
-            "позиций"
-        );
-
-    } catch (error) {
-
-        console.warn(
-            "Ошибка загрузки корзины:",
-            error
-        );
-    }
-}
 let currentQuickViewProduct = null;
 let currentQuickViewImages = [];
 let currentQuickViewImageIndex = 0;
@@ -1999,17 +1928,13 @@ document.addEventListener(
 
 document.addEventListener(
     "DOMContentLoaded",
-    async () => {
+    () => {
 
         setupFilters();
 
         renderCart();
 
         loadProducts();
-
-        // Восстанавливаем корзину
-        // текущего пользователя из PostgreSQL.
-        await loadCart();
 
         console.log(
             "URBAN STORE запущен ✓"
@@ -2210,7 +2135,87 @@ if (loginForm) {
     );
 }
 
+/* =====================================================
+   LOGOUT
+===================================================== */
 
+document.addEventListener("click", async (event) => {
+
+    const target =
+        event.target instanceof Element
+            ? event.target
+            : null;
+
+    if (!target) {
+        return;
+    }
+
+    const logoutButton =
+        target.closest(
+            "#logout, #logout-button, .logout-button, [data-action='logout']"
+        );
+
+    if (!logoutButton) {
+        return;
+    }
+
+    event.preventDefault();
+
+    try {
+
+        const response = await fetch(
+            "/api/logout",
+            {
+                method: "POST",
+                credentials: "include"
+            }
+        );
+
+        let data = null;
+
+        try {
+            data = await response.json();
+        } catch {
+            data = null;
+        }
+
+        if (!response.ok) {
+
+            console.error(
+                "LOGOUT ERROR:",
+                response.status,
+                data
+            );
+
+            return;
+        }
+
+        console.log("LOGOUT: успешно");
+
+        cart = [];
+
+        localStorage.removeItem("urban_cart");
+
+        renderCart();
+
+        if (userView) {
+            userView.classList.remove("active");
+        }
+
+        if (loginView) {
+            loginView.classList.add("active");
+        }
+
+    } catch (error) {
+
+        console.error(
+            "LOGOUT ERROR:",
+            error
+        );
+
+    }
+
+});
 /* =====================================================
    RESTORE SESSION
 ===================================================== */
