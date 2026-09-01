@@ -5,7 +5,62 @@
 
 let cart = [];
 let databaseProducts = [];
+const LOCAL_CART_KEY = "urban_cart";
 
+function saveLocalCart() {
+    try {
+        localStorage.setItem(
+            LOCAL_CART_KEY,
+            JSON.stringify(cart)
+        );
+    } catch (error) {
+        console.warn(
+            "LOCAL CART SAVE ERROR:",
+            error
+        );
+    }
+}
+
+function loadLocalCart() {
+    try {
+        const saved =
+            localStorage.getItem(
+                LOCAL_CART_KEY
+            );
+
+        if (!saved) {
+            return [];
+        }
+
+        const parsed =
+            JSON.parse(saved);
+
+        return Array.isArray(parsed)
+            ? parsed
+            : [];
+
+    } catch (error) {
+        console.warn(
+            "LOCAL CART LOAD ERROR:",
+            error
+        );
+
+        return [];
+    }
+}
+
+function clearLocalCart() {
+    try {
+        localStorage.removeItem(
+            LOCAL_CART_KEY
+        );
+    } catch (error) {
+        console.warn(
+            "LOCAL CART CLEAR ERROR:",
+            error
+        );
+    }
+}
 let currentQuickViewProduct = null;
 let currentQuickViewImages = [];
 let currentQuickViewImageIndex = 0;
@@ -321,7 +376,7 @@ function renderCart() {
                     cart.splice(index, 1);
 
                     renderCart();
-
+                    saveLocalCart();
                     if (removed?.id) {
 
                         fetch(
@@ -393,7 +448,13 @@ async function loadCart() {
             Array.isArray(data.cart)
                 ? data.cart
                 : [];
+const localCart = loadLocalCart();
 
+if (serverCart.length === 0 && localCart.length > 0) {
+    cart = localCart;
+    renderCart();
+    return;
+}
         cart =
             serverCart.map(item => ({
                 id:
@@ -481,7 +542,7 @@ async function addToCart(
     }
 
     renderCart();
-
+    saveLocalCart();
     try {
 
         const response =
@@ -1633,7 +1694,7 @@ if (clearCart) {
             cart = [];
 
             renderCart();
-
+            clearLocalCart();
             try {
 
                 await fetch(
@@ -1931,10 +1992,15 @@ document.addEventListener(
     () => {
 
         setupFilters();
+const localCart = loadLocalCart();
 
+if (localCart.length) {
+    cart = localCart;
+}
         renderCart();
 
-        loadProducts();
+      
+      loadProducts();
 
         console.log(
             "URBAN STORE запущен ✓"
@@ -2830,7 +2896,7 @@ document.addEventListener(
                     cart = [];
 
                     renderCart();
-
+                    clearLocalCart();
                 } catch (error) {
 
                     console.error(
